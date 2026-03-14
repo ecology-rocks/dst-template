@@ -29,6 +29,18 @@ const routes = [
     component: () => import('../pages/AdminBlanks.vue'),
     meta: { requiresAuth: true }
   },
+  {
+    path: '/settings',
+    name: 'UserSettings',
+    component: () => import('../pages/UserSettings.vue'),
+    meta: { requiresAuth: true }
+  },
+// Replace your existing UserProfile route with this:
+  {
+    path: '/shop/:slug',
+    name: 'ArtistShop',
+    component: () => import('../pages/UserProfile.vue')
+  },
 ]
 
 const router = createRouter({

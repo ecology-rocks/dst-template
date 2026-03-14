@@ -6,6 +6,12 @@
         <router-link to="/">Gallery</router-link>
         <router-link to="/admin" v-if="isLoggedIn">Designs</router-link>
         <router-link to="/admin/blanks" v-if="isLoggedIn">Blanks</router-link>
+        <router-link to="/settings" v-if="isLoggedIn">Settings</router-link>
+        
+        <button class="btn-secondary" @click="toggleCart" style="margin-left: 10px;">
+          Cart ({{ cart.length }})
+        </button>
+
         <router-link to="/login" v-if="!isLoggedIn">Login</router-link>
         <button v-if="isLoggedIn" @click="handleSignOut" class="logout-btn">Logout</button>
       </nav>
@@ -13,6 +19,7 @@
     
     <main class="main-content">
       <router-view />
+      <CartDrawer />
     </main>
   </div>
 </template>
@@ -21,7 +28,12 @@
 import { ref, onMounted } from 'vue'
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth'
 import { useRouter } from 'vue-router'
+// Import the drawer and the composable
+import CartDrawer from './components/CartDrawer.vue'
+import { useCart } from './composables/useCart'
 
+// Destructure what we need for the button
+const { cart, toggleCart } = useCart()
 const isLoggedIn = ref(false)
 const router = useRouter()
 let auth
