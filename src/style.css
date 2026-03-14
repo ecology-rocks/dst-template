@@ -1,0 +1,160 @@
+:root {
+  /* Bold, punchy color palette */
+  --primary: #C0392B; /* Energetic Red/Pink */
+  --secondary: #1E90FF; /* Bright Dodger Blue */
+  --accent: #FFA502; /* Vibrant Orange/Yellow */
+  --bg-color: #F1F2F6; /* Soft off-white to let cards pop */
+  --text-color: #2F3542;
+  --card-bg: #FFFFFF;
+  --radius: 12px;
+  --shadow-chunky: 4px 4px 0px rgba(0,0,0,0.9);
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+.app-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Punchy Header */
+.main-header {
+  background-color: var(--primary);
+  color: white;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 4px solid #1A1A1A;
+}
+
+.main-header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  text-transform: uppercase;
+}
+
+.main-header nav {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  font-weight: bold;
+}
+
+.main-header a {
+  color: white;
+  text-decoration: none;
+  padding: 5px 10px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.main-header a:hover, .main-header a.router-link-active {
+  background-color: #1A1A1A;
+  color: var(--accent);
+}
+
+/* Chunky Buttons */
+button, .btn-primary {
+  background-color: var(--secondary);
+  color: white;
+  font-weight: bold;
+  border: 2px solid #1A1A1A;
+  box-shadow: 2px 2px 0px #1A1A1A;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+button:active, .btn-primary:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px #1A1A1A;
+}
+
+/* Playful Cards */
+.card {
+  background: var(--card-bg);
+  border: 3px solid #1A1A1A;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-chunky);
+  transition: transform 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+}
+
+.card-img {
+  border-bottom: 3px solid #1A1A1A;
+  background-color: #FFEAA7; /* Light yellow behind transparent PNGs */
+}
+
+/* Form Inputs */
+input, textarea {
+  border: 2px solid #1A1A1A;
+  border-radius: 6px;
+  padding: 10px;
+  font-family: inherit;
+}
+
+input:focus, textarea:focus {
+  outline: none;
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 3px rgba(30, 144, 255, 0.3);
+}
+
+/* Tags */
+.tag {
+  background: var(--accent);
+  color: #1A1A1A;
+  font-weight: bold;
+  border: 2px solid #1A1A1A;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+/* Add these to your src/style.css file */
+
+.btn-secondary {
+  background-color: #E2E8F0; /* Light gray-blue */
+  color: #1A1A1A; /* Dark text for contrast */
+  border: 2px solid #1A1A1A;
+  box-shadow: 2px 2px 0px #1A1A1A;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.btn-secondary:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px #1A1A1A;
+}
+
+.text-danger {
+  color: #C0392B !important;
+  font-weight: bold;
+}
+
+/* Specific styling for buttons using text-danger so they don't look like chunky primary buttons */
+button.text-danger {
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 5px 10px;
+}
+
+button.text-danger:hover {
+  text-decoration: underline;
+  transform: none;
+}
