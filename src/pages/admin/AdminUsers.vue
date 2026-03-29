@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { collection, getDocs, updateDoc, doc } from 'firebase/firestore'
-import { db } from '../firebase'
+import { db } from '../../firebase'
 
 const users = ref([])
 const loading = ref(true)

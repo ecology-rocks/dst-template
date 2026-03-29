@@ -3,9 +3,10 @@ import { ref, onMounted } from 'vue'
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from 'firebase/firestore'
 import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import { getAuth } from 'firebase/auth'
-import { db, storage } from '../firebase'
+import { db, storage } from '../../firebase'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
+import AppModal from '../components/AppModal.vue'
 
 // Add this near the top of your constants
 const SIZE_PRESETS = {
@@ -31,6 +32,14 @@ const SIZE_PRESETS = {
 }
 
 const currentUserUid = ref(null)
+
+// Dialog modal state (replaces browser alert/confirm)
+const dialog = ref({ isOpen: false, mode: 'alert', title: '', message: '', danger: false, confirmText: 'OK', cancelText: 'Cancel', resolve: null })
+const openDialog = (options) => new Promise(resolve => {
+  dialog.value = { isOpen: true, resolve, cancelText: 'Cancel', confirmText: 'OK', danger: false, ...options }
+})
+const onDialogConfirm = () => { dialog.value.isOpen = false; dialog.value.resolve?.(true) }
+const onDialogCancel = () => { dialog.value.isOpen = false; dialog.value.resolve?.(false) }
 
 // Function to apply a preset to a specific variant
 const applyPreset = (variantIndex, presetName) => {
@@ -133,7 +142,7 @@ const uploadVariantPhotos = async (event, variantIndex) => {
   const variant = currentBlank.value.variants[variantIndex]
   
   if (variant.mockups.length + files.length > 8) {
-    alert("Maximum of 8 photos allowed per variant.")
+    await openDialog({ mode: 'alert', title: 'Upload Limit', message: 'Maximum of 8 photos allowed per variant.' })
     return
   }
 
@@ -185,7 +194,7 @@ const saveBlank = async () => {
     resetForm()
   } catch (error) {
     console.error("Error saving blank: ", error)
-    alert("Failed to save blank.")
+    await openDialog({ mode: 'alert', title: 'Save Failed', message: 'Failed to save blank. Check the console for details.' })
   }
 }
 
@@ -203,7 +212,8 @@ const editBlank = (blank) => {
 }
 
 const deleteBlank = async (id) => {
-  if (confirm('Are you sure you want to delete this blank?')) {
+  const confirmed = await openDialog({ mode: 'confirm', title: 'Delete Blank', message: 'Are you sure you want to delete this blank? This cannot be undone.', danger: true, confirmText: 'Delete' })
+  if (confirmed) {
     await deleteDoc(doc(db, 'blanks', id))
     await fetchBlanks()
   }
@@ -341,7 +351,7 @@ const stopResize = () => { isResizing = false; window.removeEventListener('mouse
 
         <div v-for="(variant, index) in currentBlank.variants" :key="index" class="variant-card">
           <div class="variant-header">
-            <strong>Variant {{ index + 1 }}</strong>
+            <strong>{{ index === 0 ? 'Default Variant' : 'Variant ' + (index + 1) }}</strong>
             <button type="button" @click="removeVariant(index)" class="text-danger unstyled-btn">Remove</button>
           </div>
           
@@ -351,10 +361,10 @@ const stopResize = () => { isResizing = false; window.removeEventListener('mouse
               <input v-model="variant.color" type="text" placeholder="e.g., Heather Grey" required />
             </div>
             <div>
-              <label>Ink Tone</label>
+              <label>Ink/Tone</label>
               <select v-model="variant.tone">
-                <option value="darkGarment">Dark Garment (Needs Light Ink)</option>
-                <option value="lightGarment">Light Garment (Needs Dark Ink)</option>
+                <option value="darkGarment">Dark Background (Needs Light Ink)</option>
+                <option value="lightGarment">Light Background (Needs Dark Ink)</option>
               </select>
             </div>
             <div>
@@ -374,7 +384,44 @@ const stopResize = () => { isResizing = false; window.removeEventListener('mouse
                 <button type="button" @click="addSize(index)" class="btn-secondary tiny-btn">+ Manual</button>
               </div>
             </div>
+
+            <div class="size-row size-row-header">
+              <span class="size-input">Size</span>
+              <span class="price-offset-group">Additional Cost</span>
+              <span class="size-remove-slot"></span>
             </div>
+
+            <div v-for="(size, sizeIndex) in variant.sizes" :key="`${index}-${sizeIndex}`" class="size-row">
+              <input
+                v-model="size.name"
+                type="text"
+                placeholder="Size label (e.g., S, M, L, 2XL)"
+                class="size-input"
+                required
+              />
+
+              <div class="price-offset-group">
+                <span class="currency-symbol">$</span>
+                <input
+                  v-model.number="size.priceOffsetDisplay"
+                  @input="updateCents(variant)"
+                  type="number"
+                  step="0.01"
+                  class="offset-input"
+                />
+              </div>
+
+              <button
+                type="button"
+                class="unstyled-btn text-danger size-remove-btn"
+                @click="removeSize(index, sizeIndex)"
+                :disabled="variant.sizes.length === 1"
+                :title="variant.sizes.length === 1 ? 'At least one size is required' : 'Remove size'"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
 
           <div class="variant-images">
             <label>Variant Photos (Max 8)</label>
@@ -458,6 +505,18 @@ const stopResize = () => { isResizing = false; window.removeEventListener('mouse
       </div>
     </div>
   </div>
+
+  <AppModal
+    v-if="dialog.isOpen"
+    :title="dialog.title"
+    :message="dialog.message"
+    :mode="dialog.mode"
+    :confirm-text="dialog.confirmText"
+    :cancel-text="dialog.cancelText"
+    :danger="dialog.danger"
+    @confirm="onDialogConfirm"
+    @cancel="onDialogCancel"
+  />
 </template>
 
 <style scoped>
@@ -503,10 +562,20 @@ select:focus, input:focus { border-color: var(--secondary); outline: none; }
 /* Sizing Sub-section */
 .sizes-section { background: white; padding: 10px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 15px; }
 .size-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+.size-row-header {
+  margin-top: 4px;
+  margin-bottom: 8px;
+  color: #666;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
 .size-input { flex: 2; }
 .price-offset-group { flex: 1; position: relative; display: flex; align-items: center; }
+.size-remove-slot { width: 56px; }
 .currency-symbol { position: absolute; left: 10px; color: #666; font-size: 0.9rem; }
 .offset-input { padding-left: 25px !important; }
+.size-remove-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Image Thumbnails */
 .image-preview-row { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }

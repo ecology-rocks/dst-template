@@ -3,7 +3,7 @@ import { getAuth } from 'firebase/auth'
 import { ref, onMounted, computed } from 'vue'
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from 'firebase/firestore'
 import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
-import { db, storage } from '../firebase'
+import { db, storage } from '../../firebase'
 import { useRoute, useRouter } from 'vue-router'
 
 const designsCollection = collection(db, 'designs')
@@ -19,6 +19,7 @@ const selectedCategory = ref('')
 const tagInput = ref('')
 const showSuggestions = ref(false)
 const currentUserUid = ref(null)
+const assetVariantMode = ref('two')
 
 const currentDesign = ref({
   id: null,
@@ -130,6 +131,7 @@ const availableCategories = computed(() => {
 
 // Add state to track upload progress
 const uploadProgress = ref({
+  single: 0,
   darkInk: 0,
   lightInk: 0
 })
@@ -156,15 +158,45 @@ const handleFileUpload = (event, assetType) => {
     async () => {
       // On success, get the URL and assign it to the design object
       const downloadURL = await getDownloadURL(uploadTask.snapshot.ref)
-      currentDesign.value.assets[assetType] = downloadURL
+
+      if (assetType === 'single') {
+        currentDesign.value.assets.darkInk = downloadURL
+        currentDesign.value.assets.lightInk = downloadURL
+      } else {
+        currentDesign.value.assets[assetType] = downloadURL
+      }
+
       uploadProgress.value[assetType] = 0 // Reset progress text
     }
   )
 }
 
+const setAssetVariantMode = (mode) => {
+  assetVariantMode.value = mode
+
+  if (mode === 'one') {
+    // Keep data shape stable: one uploaded image is used for both use cases.
+    if (currentDesign.value.assets.darkInk && !currentDesign.value.assets.lightInk) {
+      currentDesign.value.assets.lightInk = currentDesign.value.assets.darkInk
+    } else if (currentDesign.value.assets.lightInk && !currentDesign.value.assets.darkInk) {
+      currentDesign.value.assets.darkInk = currentDesign.value.assets.lightInk
+    }
+  }
+}
+
+const hasSingleAsset = computed(() => !!(currentDesign.value.assets.darkInk || currentDesign.value.assets.lightInk))
+
 const saveDesign = async () => {
 
   try {
+    if (assetVariantMode.value === 'one') {
+      const sharedAsset = currentDesign.value.assets.darkInk || currentDesign.value.assets.lightInk
+      if (sharedAsset) {
+        currentDesign.value.assets.darkInk = sharedAsset
+        currentDesign.value.assets.lightInk = sharedAsset
+      }
+    }
+
     if (isEditing.value) {
       const docRef = doc(db, 'designs', currentDesign.value.id)
       const dataToUpdate = { ...currentDesign.value }
@@ -189,6 +221,15 @@ const saveDesign = async () => {
 }
 
 const editDesign = (design) => {
+  const darkInkAsset = design.assets?.darkInk || ''
+  const lightInkAsset = design.assets?.lightInk || ''
+
+  if ((darkInkAsset && !lightInkAsset) || (!darkInkAsset && lightInkAsset) || (darkInkAsset && lightInkAsset && darkInkAsset === lightInkAsset)) {
+    assetVariantMode.value = 'one'
+  } else {
+    assetVariantMode.value = 'two'
+  }
+
   currentDesign.value = { 
     ...design,
     // Add fallbacks for older documents that lack these fields
@@ -215,6 +256,7 @@ const resetForm = () => {
   isEditing.value = false
   tagInput.value = ''
   showSuggestions.value = false
+  assetVariantMode.value = 'two'
   currentDesign.value = {
     id: null, title: '', description: '', keywords: [], breeds: [], sports: [], 
     isCustomizable: false, assets: { darkInk: '', lightInk: '' }, assignedBlankIds: [], isActive: true
@@ -343,17 +385,40 @@ const filteredDesigns = computed(() => {
       </div>
 
       <div class="form-group">
-        <label>Upload Asset (Dark Ink for Light Shirts)</label>
-        <input type="file" accept="image/png, image/jpeg" @change="(e) => handleFileUpload(e, 'darkInk')" />
-        <p v-if="uploadProgress.darkInk">Uploading: {{ uploadProgress.darkInk }}%</p>
-        <p v-if="currentDesign.assets.darkInk" class="success-text">File attached!</p>
-      </div>
+        <label>Design Asset Variants</label>
+        <div class="asset-mode-toggle">
+          <label class="asset-mode-option">
+            <input type="radio" name="assetVariantMode" value="one" :checked="assetVariantMode === 'one'" @change="setAssetVariantMode('one')" />
+            One file (use for both light/dark backgrounds)
+          </label>
+          <label class="asset-mode-option">
+            <input type="radio" name="assetVariantMode" value="two" :checked="assetVariantMode === 'two'" @change="setAssetVariantMode('two')" />
+            Two files (separate dark-ink and light-ink assets)
+          </label>
+        </div>
 
-      <div class="form-group">
-        <label>Upload Asset (Light Ink for Dark Shirts)</label>
-        <input type="file" accept="image/png, image/jpeg" @change="(e) => handleFileUpload(e, 'lightInk')" />
-        <p v-if="uploadProgress.lightInk">Uploading: {{ uploadProgress.lightInk }}%</p>
-        <p v-if="currentDesign.assets.lightInk" class="success-text">File attached!</p>
+        <div v-if="assetVariantMode === 'one'" class="asset-upload-panel">
+          <label class="asset-upload-label">Upload Shared Asset</label>
+          <input type="file" accept="image/png, image/jpeg" @change="(e) => handleFileUpload(e, 'single')" />
+          <p v-if="uploadProgress.single">Uploading: {{ uploadProgress.single }}%</p>
+          <p v-if="hasSingleAsset" class="success-text">File attached! This image will be used for both asset fields.</p>
+        </div>
+
+        <template v-else>
+          <div class="asset-upload-panel">
+            <label class="asset-upload-label">Upload Asset (Dark Ink for Light Backgrounds)</label>
+            <input type="file" accept="image/png, image/jpeg" @change="(e) => handleFileUpload(e, 'darkInk')" />
+            <p v-if="uploadProgress.darkInk">Uploading: {{ uploadProgress.darkInk }}%</p>
+            <p v-if="currentDesign.assets.darkInk" class="success-text">Dark-ink file attached.</p>
+          </div>
+
+          <div class="asset-upload-panel">
+            <label class="asset-upload-label">Upload Asset (Light Ink for Dark Backgrounds)</label>
+            <input type="file" accept="image/png, image/jpeg" @change="(e) => handleFileUpload(e, 'lightInk')" />
+            <p v-if="uploadProgress.lightInk">Uploading: {{ uploadProgress.lightInk }}%</p>
+            <p v-if="currentDesign.assets.lightInk" class="success-text">Light-ink file attached.</p>
+          </div>
+        </template>
       </div>
 
       <button type="submit" class="btn-primary">
@@ -562,5 +627,31 @@ th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
   padding: 20px;
   text-align: center;
   color: #666;
+}
+.asset-mode-toggle {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  background: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+}
+.asset-mode-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: normal;
+  margin: 0;
+  cursor: pointer;
+}
+.asset-upload-panel {
+  border: 1px dashed #ccc;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+.asset-upload-label {
+  margin-bottom: 8px;
 }
 </style>

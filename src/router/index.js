@@ -13,12 +13,12 @@ const routes = [
   {
     path: '/login',
     name: 'Login',
-    component: () => import('../pages/Login.vue') // We'll build this next
+    component: () => import('../pages/users/Login.vue') // We'll build this next
   },
   {
     path: '/admin',
     name: 'Admin',
-    component: () => import('../pages/AdminDesigns.vue'),
+    component: () => import('../pages/artists/AdminDesigns.vue'),
     meta: { requiresAuth: true }
   },
   {
@@ -29,26 +29,25 @@ const routes = [
   {
     path: '/admin/blanks',
     name: 'AdminBlanks',
-    component: () => import('../pages/AdminBlanks.vue'),
+    component: () => import('../pages/artists/AdminBlanks.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/admin/users',
     name: 'AdminUsers',
-    component: () => import('../pages/AdminUsers.vue'),
-    // NEW: We added a specific flag just for this route
+    component: () => import('../pages/admin/AdminUsers.vue'),
     meta: { requiresAuth: true, requiresAdmin: true } 
   },
   {
     path: '/settings',
     name: 'UserSettings',
-    component: () => import('../pages/UserSettings.vue'),
+    component: () => import('../pages/users/UserSettings.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/shop/:slug',
     name: 'ArtistShop',
-    component: () => import('../pages/UserProfile.vue')
+    component: () => import('../pages/users/UserProfile.vue')
   },
   {
     path: '/checkout-success',
@@ -58,13 +57,18 @@ const routes = [
   { 
     path: '/admin/orders', 
     name: 'AdminOrders',
-    component: () => import('../pages/AdminOrders.vue'), 
+    component: () => import('../pages/artists/AdminOrders.vue'), 
     meta: { requiresAuth: true } 
   },
   {
     path: '/register',
     name: 'Register',
-    component: () => import('../pages/Register.vue')
+    component: () => import('../pages/users/Register.vue')
+  },
+  {
+    path: '/orders',
+    name: 'OrderLookup',
+    component: () => import('../pages/users/OrderLookup.vue')
   }
 ]
 

@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
-import { db } from '../firebase'
+import { db } from '../../firebase'
 
 const orders = ref([])
 const loading = ref(true)

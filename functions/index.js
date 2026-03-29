@@ -163,3 +163,100 @@ exports.stripeWebhook = onRequest({
   // Acknowledge receipt to Stripe
   res.json({ received: true });
 });
+
+exports.lookupOrders = onRequest({
+  cors: true,
+}, async (req, res) => {
+  if (req.method !== "POST") {
+    res.status(405).send("Method Not Allowed");
+    return;
+  }
+
+  try {
+    const email = (req.body?.email || "").trim().toLowerCase();
+    const orderRef = (req.body?.orderRef || "").trim();
+
+    if (!email) {
+      res.status(400).json({ error: "Email is required." });
+      return;
+    }
+
+    const emailQuery = await db
+      .collection("orders")
+      .where("customerEmail", "==", email)
+      .get();
+
+    const normalizedRef = orderRef.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+
+    const matchingDocs = emailQuery.docs.filter((orderDoc) => {
+      if (!normalizedRef) return true;
+      const normalizedId = orderDoc.id.toLowerCase();
+      return normalizedId === normalizedRef || normalizedId.endsWith(normalizedRef);
+    });
+
+    const orders = matchingDocs.map((orderDoc) => {
+      const data = orderDoc.data() || {};
+      return {
+        id: orderDoc.id,
+        shortId: orderDoc.id.slice(-6).toUpperCase(),
+        createdAt: data.createdAt || null,
+        status: data.status || "received",
+        trackingNumber: data.trackingNumber || "",
+        customerEmail: data.customerEmail || "",
+        shipping: data.shipping || null,
+        items: Array.isArray(data.items)
+          ? data.items.map((item) => ({
+            designTitle: item.designTitle || "Design",
+            designAssetUrl: item.designAssetUrl || "",
+            quantity: item.quantity || 1,
+            blankName: item.blankName || "",
+            color: item.color || "",
+            size: item.size || "",
+          }))
+          : [],
+      };
+    }).sort((a, b) => {
+      const aSeconds = a.createdAt?.seconds || 0;
+      const bSeconds = b.createdAt?.seconds || 0;
+      return bSeconds - aSeconds;
+    });
+
+    res.json({ orders });
+  } catch (error) {
+    logger.error("lookupOrders failed", error);
+    res.status(500).json({ error: "Failed to look up orders." });
+  }
+});
+
+exports.getOrderRefsBySession = onRequest({
+  cors: true,
+}, async (req, res) => {
+  if (req.method !== "GET") {
+    res.status(405).send("Method Not Allowed");
+    return;
+  }
+
+  try {
+    const sessionId = (req.query?.session_id || "").toString().trim();
+
+    if (!sessionId) {
+      res.status(400).json({ error: "session_id is required." });
+      return;
+    }
+
+    const snap = await db
+      .collection("orders")
+      .where("stripeSessionId", "==", sessionId)
+      .get();
+
+    const orderRefs = snap.docs.map((orderDoc) => ({
+      id: orderDoc.id,
+      shortId: orderDoc.id.slice(-6).toUpperCase(),
+    }));
+
+    res.json({ orderRefs });
+  } catch (error) {
+    logger.error("getOrderRefsBySession failed", error);
+    res.status(500).json({ error: "Failed to load order references." });
+  }
+});

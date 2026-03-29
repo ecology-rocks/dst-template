@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore'
 import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import { getAuth } from 'firebase/auth'
-import { db, storage } from '../firebase'
+import { db, storage } from '../../firebase'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 

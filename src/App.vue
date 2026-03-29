@@ -4,6 +4,7 @@
       <h1><router-link to="/">Dog Sport Tees</router-link></h1>
       <nav>
         <router-link to="/">Gallery</router-link>
+        <router-link to="/orders">Track Order</router-link>
         <router-link to="/admin" v-if="isLoggedIn">Designs</router-link>
         <router-link to="/admin/blanks" v-if="isLoggedIn">Blanks</router-link>
         <router-link to="/settings" v-if="isLoggedIn">User Settings</router-link>

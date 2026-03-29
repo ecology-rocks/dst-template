@@ -30,7 +30,7 @@
 import { ref } from 'vue'
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '../firebase'
+import { db } from '../../firebase'
 import { useRouter } from 'vue-router'
 
 const email = ref('')
