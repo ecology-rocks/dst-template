@@ -26,3 +26,5 @@ dist-ssr
 .env.local
 .agents
 .firebaserc
+.firebase/hosting*
+*.cache
