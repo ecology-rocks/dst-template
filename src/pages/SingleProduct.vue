@@ -132,7 +132,7 @@ const handleAddToCart = () => {
     size: selectedSize.value.name,
     price: calculatedPrice.value,
     thumbnailUrl: currentMockupUrl.value,
-    artistPhotoUrl: artist.value?.photoUrl || 'https://via.placeholder.com/150' // Passing artist photo per request
+    designAssetUrl: currentDesignAsset.value
   }
   
   addToCart(productData)

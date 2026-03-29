@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useCart } from '../composables/useCart'
 import { getAuth } from 'firebase/auth'
 

@@ -1,12 +1,13 @@
 <template>
   <div class="app-wrapper">
     <header class="main-header">
-      <h1>Dog Sport Tees</h1>
+      <h1><router-link to="/">Dog Sport Tees</router-link></h1>
       <nav>
         <router-link to="/">Gallery</router-link>
         <router-link to="/admin" v-if="isLoggedIn">Designs</router-link>
         <router-link to="/admin/blanks" v-if="isLoggedIn">Blanks</router-link>
-        <router-link to="/settings" v-if="isLoggedIn">Settings</router-link>
+        <router-link to="/settings" v-if="isLoggedIn">User Settings</router-link>
+        <router-link to="/admin/orders" v-if="isLoggedIn">Orders Dashboard</router-link>
         
         <button class="btn-secondary" @click="toggleCart" style="margin-left: 10px;">
           Cart ({{ cart.length }})

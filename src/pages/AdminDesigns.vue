@@ -18,6 +18,7 @@ const blankSearchQuery = ref('')
 const selectedCategory = ref('')
 const tagInput = ref('')
 const showSuggestions = ref(false)
+const currentUserUid = ref(null)
 
 const currentDesign = ref({
   id: null,
@@ -103,6 +104,8 @@ const removeTag = (text, type) => {
 }
 
 onMounted(() => {
+  const auth = getAuth()
+  currentUserUid.value = auth.currentUser?.uid
   fetchDesigns()
   fetchBlanks() 
 })
@@ -397,21 +400,23 @@ const filteredDesigns = computed(() => {
         </thead>
         <tbody>
           <tr v-for="design in filteredDesigns" :key="design.id">
-            <td><strong>{{ design.title }}</strong></td>
-            <td>
-              <div style="font-size: 0.8rem; color: #555;">
-                <span v-if="design.breeds?.length"><strong>Breeds:</strong> {{ design.breeds.join(', ') }}<br/></span>
-                <span v-if="design.sports?.length"><strong>Sports:</strong> {{ design.sports.join(', ') }}</span>
-              </div>
-            </td>
-            <td>
-              <span v-if="design.isCustomizable" class="tag" style="background: var(--accent);">Yes</span>
-              <span v-else style="color: #999; font-size: 0.8rem;">No</span>
-            </td>
-            <td>
-              <button @click="editDesign(design)" class="btn-secondary" style="font-size: 0.8rem; padding: 5px 10px; margin-right: 5px;">Edit</button>
-              <button @click="deleteDesign(design.id)" class="text-danger">Delete</button>
-            </td>
+            <template v-if="design.ownerId === currentUserUid">
+              <td><strong>{{ design.title }}</strong></td>
+              <td>
+                <div style="font-size: 0.8rem; color: #555;">
+                  <span v-if="design.breeds?.length"><strong>Breeds:</strong> {{ design.breeds.join(', ') }}<br/></span>
+                  <span v-if="design.sports?.length"><strong>Sports:</strong> {{ design.sports.join(', ') }}</span>
+                </div>
+              </td>
+              <td>
+                <span v-if="design.isCustomizable" class="tag" style="background: var(--accent);">Yes</span>
+                <span v-else style="color: #999; font-size: 0.8rem;">No</span>
+              </td>
+              <td>
+                <button @click="editDesign(design)" class="btn-secondary" style="font-size: 0.8rem; padding: 5px 10px; margin-right: 5px;">Edit</button>
+                <button @click="deleteDesign(design.id)" class="text-danger">Delete</button>
+              </td>
+            </template>
           </tr>
         </tbody>
       </table>

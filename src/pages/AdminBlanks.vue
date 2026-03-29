@@ -30,6 +30,8 @@ const SIZE_PRESETS = {
   ]
 }
 
+const currentUserUid = ref(null)
+
 // Function to apply a preset to a specific variant
 const applyPreset = (variantIndex, presetName) => {
   const preset = SIZE_PRESETS[presetName]
@@ -78,7 +80,11 @@ const fetchBlanks = async () => {
   blanks.value = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
 }
 
-onMounted(fetchBlanks)
+onMounted(() => {
+  const auth = getAuth()
+  currentUserUid.value = auth.currentUser?.uid
+  fetchBlanks() 
+})
 
 const addVariant = () => currentBlank.value.variants.push(getEmptyVariant())
 const removeVariant = (index) => currentBlank.value.variants.splice(index, 1)
@@ -409,6 +415,7 @@ const stopResize = () => { isResizing = false; window.removeEventListener('mouse
         </thead>
         <tbody>
           <tr v-for="blank in blanks" :key="blank.id">
+            <template v-if="blank.ownerId === currentUserUid">
             <td>{{ blank.name }}</td>
             <td>{{ blank.category }} > {{ blank.subCategory }}</td>
             <td>{{ blank.variants?.length || 0 }}</td>
@@ -416,6 +423,7 @@ const stopResize = () => { isResizing = false; window.removeEventListener('mouse
               <button @click="editBlank(blank)" class="action-btn">Edit</button>
               <button @click="deleteBlank(blank.id)" class="text-danger unstyled-btn">Delete</button>
             </td>
+            </template>
           </tr>
         </tbody>
       </table>

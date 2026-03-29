@@ -25,9 +25,46 @@ const profile = ref({
     customReturnPolicy: '',
     printifyApiKey: '',
     printifyShopId: '',
-    shopSlug: '' // <-- NEW FIELD
+    shopSlug: '',
+    shippingCountry: 'US', // Default to US
+    shipsInternationally: false,
+    internationalFee: 10.00 // <-- NEW FIELD
   }
 })
+
+const submitApplication = async () => {
+  if (!profile.value.artistProfile.shopSlug || !profile.value.artistProfile.bio) {
+    alert("Please provide a shop URL and a short bio.")
+    return
+  }
+
+  // Check if slug is taken before applying
+  const slugQuery = query(collection(db, 'users'), where('artistProfile.shopSlug', '==', profile.value.artistProfile.shopSlug))
+  const slugSnap = await getDocs(slugQuery)
+  const isTaken = slugSnap.docs.some(d => d.id !== auth.currentUser.uid)
+  
+  if (isTaken) {
+    alert("That Shop URL is already taken. Please choose another one.")
+    return 
+  }
+
+  try {
+    const auth = getAuth()
+    await setDoc(doc(db, 'users', auth.currentUser.uid), {
+      applicationStatus: 'pending',
+      artistProfile: {
+        shopSlug: profile.value.artistProfile.shopSlug,
+        bio: profile.value.artistProfile.bio
+      }
+    }, { merge: true })
+    
+    profile.value.applicationStatus = 'pending'
+    alert("Application submitted! We'll review it shortly.")
+  } catch (error) {
+    console.error("Error applying:", error)
+    alert("Failed to submit application.")
+  }
+}
 
 // Avatar upload with size validation
 const uploadAvatar = (event) => {
@@ -122,30 +159,6 @@ const saveProfile = async () => {
     <div v-if="loading" class="loading">Loading profile...</div>
 
     <form v-else @submit.prevent="saveProfile" class="settings-form">
-      
-      <div class="form-section role-selector">
-        <h3>How do you want to use the platform?</h3>
-        <div class="checkbox-group">
-          <label class="role-card" :class="{ active: profile.roles.isShopper }">
-            <input type="checkbox" v-model="profile.roles.isShopper" />
-            <strong>I'm a Shopper</strong>
-            <span>I want to buy awesome gear.</span>
-          </label>
-          <label class="role-card" :class="{ active: profile.roles.isArtist }">
-            <input type="checkbox" v-model="profile.roles.isArtist" />
-            <strong>I'm an Artist</strong>
-            <span>I want to sell my designs.</span>
-          </label>
-        </div>
-        <button 
-          type="button" 
-          class="btn-primary" 
-          style="width: 100%; margin-top: 15px; background-color: #27ae60; border-color: #1A1A1A; box-shadow: 2px 2px 0px #1A1A1A;"
-          @click="profile.roles.isShopper = true; profile.roles.isArtist = true;"
-        >
-          I'm Both!
-        </button>
-      </div>
 
       <div class="form-section">
         <h3>General Information</h3>
@@ -166,6 +179,41 @@ const saveProfile = async () => {
         </div>
       </div>
 
+      <div class="application-banner" v-if="!profile.roles?.isArtist">
+        <h3>Artist Dashboard Access</h3>
+        
+        <div v-if="profile.applicationStatus === 'none' || !profile.applicationStatus">
+          <p>Want to sell your dog sport designs on our platform? Apply to become an artist!</p>
+          
+          <div class="application-form">
+            <div class="form-group">
+              <label>Proposed Shop URL</label>
+              <div class="slug-input-group">
+                <span class="slug-prefix">dogsporttees.com/shop/</span>
+                <input v-model="profile.artistProfile.shopSlug" @input="formatSlug" type="text" placeholder="my-awesome-shop" class="slug-input" />
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label>Artist Bio / Application Notes</label>
+              <textarea v-model="profile.artistProfile.bio" rows="4" placeholder="Tell us about your art style and your involvement in dog sports..."></textarea>
+            </div>
+          </div>
+
+          <button @click="submitApplication" type="button" class="btn-primary">Submit Application</button>
+        </div>
+
+        <div v-else-if="profile.applicationStatus === 'pending'" class="status-pending">
+          <p>⏳ <strong>Your application is under review!</strong> Hang tight, our team is verifying your account.</p>
+        </div>
+
+        <div v-else-if="profile.applicationStatus === 'rejected'" class="status-rejected">
+          <p>❌ <strong>Application Declined.</strong> Unfortunately, we cannot approve your artist account at this time.</p>
+        </div>
+        
+        <hr class="section-divider" />
+      </div>
+      
       <div v-if="profile.roles.isArtist" class="form-section artist-theme">
         <h3>Artist Shop Setup</h3>
         <div class="form-group" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 2px dashed #ccc;">
@@ -191,6 +239,40 @@ const saveProfile = async () => {
           <label>Artist Bio</label>
           <div class="editor-wrapper">
             <QuillEditor theme="snow" v-model:content="profile.artistProfile.bio" contentType="html" toolbar="essential" />
+          </div>
+        </div>
+
+        <h4 class="sub-header">Shipping Rules</h4>
+        
+        <div class="form-group">
+          <label>Base Shipping Country</label>
+          <p class="help-text">Your item prices should include "free" shipping to this country.</p>
+          <select v-model="profile.artistProfile.shippingCountry" class="standard-input">
+            <option value="US">United States</option>
+            <option value="CA">Canada</option>
+            <option value="GB">United Kingdom</option>
+            <option value="AU">Australia</option>
+            </select>
+        </div>
+
+        <div class="form-group checkbox-group">
+          <label class="toggle-card" :class="{ active: profile.artistProfile.shipsInternationally }">
+            <span>
+            <input type="checkbox" v-model="profile.artistProfile.shipsInternationally" />
+            <div class="toggle-content">
+              <strong>Ship Internationally? </strong>
+              Allow customers outside your base country to buy your items.
+            </div>
+          </span>
+          </label>
+        </div>
+
+        <div class="form-group" v-if="profile.artistProfile.shipsInternationally">
+          <label>International Shipping Surcharge</label>
+          <p class="help-text">This flat fee is added once per order for customers outside your base country.</p>
+          <div class="currency-input-group">
+            <span class="currency-prefix">$</span>
+            <input type="number" step="0.50" min="0" v-model="profile.artistProfile.internationalFee" class="currency-input" />
           </div>
         </div>
 
@@ -234,6 +316,116 @@ const saveProfile = async () => {
 </template>
 
 <style scoped>
+.sub-header {
+  margin-top: 30px;
+  border-bottom: 2px solid #f1f2f6;
+  padding-bottom: 10px;
+  color: var(--primary);
+}
+
+.standard-input {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.currency-input-group {
+  display: flex;
+  align-items: center;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  overflow: hidden;
+  max-width: 200px;
+}
+
+.currency-prefix {
+  background: #f1f2f6;
+  padding: 10px 15px;
+  font-weight: bold;
+  color: #666;
+  border-right: 2px solid #ccc;
+}
+
+.currency-input {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+}
+
+.toggle-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  padding: 15px;
+  border: 2px solid #ccc;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+
+.toggle-card:hover {
+  border-color: #1A1A1A;
+}
+
+.toggle-card.active {
+  border-color: #1A1A1A;
+  background: #f8f9fa;
+  box-shadow: 2px 2px 0px var(--accent);
+}
+
+.toggle-card input[type="checkbox"] {
+  margin-top: 4px;
+  transform: scale(1.2);
+}
+
+.toggle-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.toggle-content strong {
+  color: #1A1A1A;
+  margin-bottom: 2px;
+}
+
+.toggle-content span {
+  font-size: 0.85rem;
+  color: #666;
+}
+.application-form {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 2px dashed #ccc;
+}
+.slug-input-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.slug-prefix {
+  color: #666;
+  font-weight: bold;
+}
+.slug-input {
+  flex: 1;
+}
+.section-divider {
+  margin: 25px 0;
+  border-color: #ccc;
+}
+.help-text {
+  font-size: 0.8rem;
+  color: #666;
+  margin: 0 0 10px 0;
+}
+
 .settings-container { max-width: 800px; margin: 0 auto; padding: 20px; }
 .form-section { background: white; padding: 25px; border: 3px solid #1A1A1A; border-radius: var(--radius); margin-bottom: 25px; box-shadow: 4px 4px 0px rgba(0,0,0,0.1); }
 .form-section h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid #f1f2f6; padding-bottom: 10px; margin-bottom: 20px; }

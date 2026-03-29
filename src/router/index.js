@@ -1,5 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '../firebase'
+
 
 const routes = [
   {
@@ -30,17 +33,39 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/admin/users',
+    name: 'AdminUsers',
+    component: () => import('../pages/AdminUsers.vue'),
+    // NEW: We added a specific flag just for this route
+    meta: { requiresAuth: true, requiresAdmin: true } 
+  },
+  {
     path: '/settings',
     name: 'UserSettings',
     component: () => import('../pages/UserSettings.vue'),
     meta: { requiresAuth: true }
   },
-// Replace your existing UserProfile route with this:
   {
     path: '/shop/:slug',
     name: 'ArtistShop',
     component: () => import('../pages/UserProfile.vue')
   },
+  {
+    path: '/checkout-success',
+    name: 'CheckoutSuccess',
+    component: () => import('../pages/Success.vue')
+  },
+  { 
+    path: '/admin/orders', 
+    name: 'AdminOrders',
+    component: () => import('../pages/AdminOrders.vue'), 
+    meta: { requiresAuth: true } 
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: () => import('../pages/Register.vue')
+  }
 ]
 
 const router = createRouter({
@@ -63,13 +88,40 @@ const getCurrentUser = () => {
 }
 
 router.beforeEach(async (to, from, next) => {
-  if (to.matched.some((record) => record.meta.requiresAuth)) {
-    if (await getCurrentUser()) {
-      next()
-    } else {
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin)
+
+  if (requiresAuth) {
+    const user = await getCurrentUser()
+    
+    // 1. If they aren't logged in at all, kick to login
+    if (!user) {
       next('/login')
+      return
+    }
+
+    // 2. If the route specifically requires Admin privileges
+    if (requiresAdmin) {
+      try {
+        const userDocRef = doc(db, 'users', user.uid)
+        const userDoc = await getDoc(userDocRef)
+        
+        if (userDoc.exists() && userDoc.data().roles?.isAdmin) {
+          next() // They are an admin, let them in!
+        } else {
+          alert("You do not have permission to view the Admin dashboard.")
+          next('/settings') // Kick them back to settings
+        }
+      } catch (error) {
+        console.error("Error checking admin status:", error)
+        next('/settings')
+      }
+    } else {
+      // 3. Just a standard authenticated route (like /settings)
+      next() 
     }
   } else {
+    // 4. Public routes (like the Home page)
     next()
   }
 })
