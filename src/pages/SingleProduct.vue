@@ -198,9 +198,15 @@ const handleAddToCart = () => {
 
           <div v-if="selectedVariant && selectedVariant.sizes?.length > 0" class="config-section">
             <h3 class="config-title">3. Select Size</h3>
-            <div class="button-group">
-              <button v-for="size in selectedVariant.sizes" :key="size.name" @click="selectedSize = size" :class="['select-btn', { active: selectedSize?.name === size.name }]">
-                {{ size.name }} <span v-if="size.priceOffset > 0" class="price-bump">(+${{ (size.priceOffset / 100).toFixed(2) }})</span>
+            <div class="size-picker-grid">
+              <button 
+                v-for="size in selectedVariant.sizes" 
+                :key="size.name" 
+                @click="selectedSize = size" 
+                :class="['size-chip', { active: selectedSize?.name === size.name }]"
+              >
+                <span class="size-name">{{ size.name }}</span>
+                <span v-if="size.priceOffset > 0" class="price-pill">+${{ (size.priceOffset / 100).toFixed(2) }}</span>
               </button>
             </div>
           </div>
@@ -284,4 +290,58 @@ const handleAddToCart = () => {
 .html-content :deep(th), .html-content :deep(td) { border: 1px solid #ccc; padding: 8px; text-align: left; }
 .html-content :deep(th) { background-color: #f8f9fa; font-weight: bold; }
 .html-content :deep(p) { line-height: 1.5; color: #555; }
+
+/* Better Grid for Sizes */
+.size-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 10px;
+}
+
+.size-chip {
+  background: white;
+  border: 2px solid #1A1A1A;
+  border-radius: 8px;
+  padding: 12px 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s;
+  box-shadow: 2px 2px 0px rgba(0,0,0,0.1);
+  /* Fix: Explicitly set text color for unselected state */
+  color: #1A1A1A !important; 
+}
+.size-chip:hover {
+  border-color: var(--secondary);
+  background-color: #f8f9fa;
+}
+
+.size-chip.active {
+  background: var(--primary) !important;
+  color: white !important; /* Keep text white only when background is dark */
+  border-color: #1A1A1A;
+  box-shadow: 4px 4px 0px #1A1A1A;
+  transform: translate(-2px, -2px);
+}
+
+.size-name {
+  font-weight: 900;
+  font-size: 1.1rem;
+}
+
+.price-pill {
+  font-size: 0.7rem;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-top: 4px;
+  color: #666;
+}
+
+.size-chip.active .price-pill {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
 </style>

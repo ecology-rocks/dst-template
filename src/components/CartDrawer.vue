@@ -1,12 +1,40 @@
 <script setup>
 import { computed } from 'vue'
 import { useCart } from '../composables/useCart'
+import { getAuth } from 'firebase/auth'
 
 const { cart, isCartOpen, removeFromCart, toggleCart } = useCart()
 
 const cartTotal = computed(() => {
   return cart.value.reduce((total, item) => total + (item.price * item.quantity), 0)
 })
+
+const isProcessing = ref(false)
+
+const handleCheckout = async () => {
+  const auth = getAuth()
+  isProcessing.value = true
+
+  try {
+    const response = await fetch(`${import.meta.env.VITE_FUNCTIONS_URL}/createStripeCheckout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cart: cart.value,
+        customerEmail: auth.currentUser?.email || ''
+      })
+    })
+
+    const { url } = await response.json()
+    // Redirect the user to the secure Stripe Checkout page
+    window.location.href = url
+  } catch (error) {
+    console.error("Checkout failed:", error)
+    alert("Checkout is currently unavailable. Please try again later.")
+  } finally {
+    isProcessing.value = false
+  }
+}
 </script>
 
 <template>
@@ -53,7 +81,13 @@ const cartTotal = computed(() => {
           <span class="subtotal-price">${{ (cartTotal / 100).toFixed(2) }}</span>
         </div>
         <p class="tax-note">Taxes and shipping calculated at checkout.</p>
-        <button class="btn-primary checkout-btn" disabled>Proceed to Checkout (Coming Soon)</button>
+        <button 
+          class="btn-primary checkout-btn" 
+          :disabled="cart.length === 0 || isProcessing"
+          @click="handleCheckout"
+        >
+          {{ isProcessing ? 'Loading...' : 'Proceed to Checkout' }}
+        </button>
       </div>
     </div>
   </div>
@@ -235,9 +269,13 @@ const cartTotal = computed(() => {
 }
 
 .checkout-btn:disabled {
-  background-color: #ccc;
-  border-color: #999;
-  box-shadow: none;
+  background-color: #95a5a6;
   cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Optional: Add a subtle pulse to the "Loading..." state */
+.checkout-btn:not(:disabled):active {
+  transform: scale(0.98);
 }
 </style>

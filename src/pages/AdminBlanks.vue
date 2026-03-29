@@ -7,6 +7,39 @@ import { db, storage } from '../firebase'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
+// Add this near the top of your constants
+const SIZE_PRESETS = {
+  'XS to 5XL': [
+    { name: 'XS', priceOffset: 0, priceOffsetDisplay: 0 },
+    { name: 'S', priceOffset: 0, priceOffsetDisplay: 0 },
+    { name: 'M', priceOffset: 0, priceOffsetDisplay: 0 },
+    { name: 'L', priceOffset: 0, priceOffsetDisplay: 0 },
+    { name: 'XL', priceOffset: 0, priceOffsetDisplay: 0 },
+    { name: '2XL', priceOffset: 0, priceOffsetDisplay: 0 },
+    { name: '3XL', priceOffset: 0, priceOffsetDisplay: 0 },
+    { name: '4XL', priceOffset: 0, priceOffsetDisplay: 0 },
+    { name: '5XL', priceOffset: 0, priceOffsetDisplay: 0 }
+  ],
+  'Youth Apparel': [
+    { name: 'YS', priceOffset: 0, priceOffsetDisplay: 0 },
+    { name: 'YM', priceOffset: 0, priceOffsetDisplay: 0 },
+    { name: 'YL', priceOffset: 0, priceOffsetDisplay: 0 }
+  ],
+  'One Size': [
+    { name: 'One Size', priceOffset: 0, priceOffsetDisplay: 0 }
+  ]
+}
+
+// Function to apply a preset to a specific variant
+const applyPreset = (variantIndex, presetName) => {
+  const preset = SIZE_PRESETS[presetName]
+  if (preset) {
+    // We use structuredClone or a map to ensure we don't accidentally share references
+    currentBlank.value.variants[variantIndex].sizes = preset.map(s => ({ ...s }))
+    updateCents(currentBlank.value.variants[variantIndex])
+  }
+}
+
 const categoryMap = {
   'Apparel': ['T-shirts', 'Tanktops', 'Hoodies', 'Sweaters'],
   'Merch': ['Stickers', 'Pins', 'Magnets', 'Patches', 'Enamel Pins'],
@@ -327,17 +360,15 @@ const stopResize = () => { isResizing = false; window.removeEventListener('mouse
           <div class="sizes-section">
             <div class="section-header">
               <label>Available Sizes</label>
-              <button type="button" @click="addSize(index)" class="btn-secondary tiny-btn">+ Add Size</button>
-            </div>
-            <div v-for="(size, sIndex) in variant.sizes" :key="'size-'+sIndex" class="size-row">
-              <input v-model="size.name" type="text" placeholder="Size (e.g., XL)" required class="size-input" />
-              <div class="price-offset-group">
-                <span class="currency-symbol">+$</span>
-                <input v-model.number="size.priceOffsetDisplay" @input="updateCents(variant)" type="number" step="0.01" min="0" placeholder="0.00" required class="offset-input" />
+              <div class="preset-controls">
+                <select @change="(e) => applyPreset(index, e.target.value)" class="preset-select">
+                  <option value="">Load Preset...</option>
+                  <option v-for="(sizes, name) in SIZE_PRESETS" :key="name" :value="name">{{ name }}</option>
+                </select>
+                <button type="button" @click="addSize(index)" class="btn-secondary tiny-btn">+ Manual</button>
               </div>
-              <button type="button" @click="removeSize(index, sIndex)" class="text-danger unstyled-btn font-bold">X</button>
             </div>
-          </div>
+            </div>
 
           <div class="variant-images">
             <label>Variant Photos (Max 8)</label>
