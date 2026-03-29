@@ -9,7 +9,7 @@
         <router-link to="/settings" v-if="isLoggedIn">User Settings</router-link>
         <router-link to="/admin/orders" v-if="isLoggedIn">Orders Dashboard</router-link>
         
-        <button class="btn-secondary" @click="toggleCart" style="margin-left: 10px;">
+        <button class="btn-secondary m-l-10" @click="toggleCart">
           Cart ({{ cart.length }})
         </button>
 

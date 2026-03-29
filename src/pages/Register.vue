@@ -1,7 +1,7 @@
 <template>
   <div class="register-container">
     <h2>Create an Account</h2>
-    <p style="text-align: center; color: #666; margin-bottom: 20px;">Join to save your cart, or apply to become a Dog Sport Tees artist.</p>
+    <p class="register-subtitle">Join to save your cart, or apply to become a Dog Sport Tees artist.</p>
     <form @submit.prevent="handleRegister" class="register-form">
       <div class="form-group">
         <label>Email</label>
@@ -82,4 +82,5 @@ input { width: 100%; padding: 10px; box-sizing: border-box; border: 2px solid #c
 .btn-primary:disabled { background-color: #95a5a6; cursor: not-allowed; }
 .error { color: #e74c3c; font-size: 0.9em; margin-bottom: 10px; font-weight: bold; }
 .login-link { margin-top: 20px; text-align: center; font-size: 0.9em; }
+.register-subtitle { text-align: center; color: #666; margin-bottom: 20px; }
 </style>

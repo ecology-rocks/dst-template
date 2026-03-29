@@ -70,26 +70,26 @@ onMounted(async () => {
     <div v-else-if="designs.length === 0" class="empty-state">No designs available yet.</div>
     
     <template v-else>
-      <div class="gallery-filters" style="display: flex; gap: 15px; margin: 20px 0; background: white; padding: 15px; border-radius: 8px; border: 3px solid #1A1A1A; box-shadow: 4px 4px 0px rgba(0,0,0,0.1); flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 200px;">
-          <label style="display: block; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; color: #1A1A1A;">Filter by Breed</label>
-          <select v-model="galleryFilter.breed" style="width: 100%; padding: 10px; border: 2px solid #ccc; border-radius: 6px;">
+      <div class="gallery-filters">
+        <div class="gallery-filter-item">
+          <label class="gallery-filter-label">Filter by Breed</label>
+          <select v-model="galleryFilter.breed" class="gallery-filter-select">
             <option value="">All Breeds</option>
             <option v-for="breed in uniqueBreeds" :key="breed" :value="breed">{{ breed }}</option>
           </select>
         </div>
 
-        <div style="flex: 1; min-width: 200px;">
-          <label style="display: block; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; color: #1A1A1A;">Filter by Sport</label>
-          <select v-model="galleryFilter.sport" style="width: 100%; padding: 10px; border: 2px solid #ccc; border-radius: 6px;">
+        <div class="gallery-filter-item">
+          <label class="gallery-filter-label">Filter by Sport</label>
+          <select v-model="galleryFilter.sport" class="gallery-filter-select">
             <option value="">All Sports</option>
             <option v-for="sport in uniqueSports" :key="sport" :value="sport">{{ sport }}</option>
           </select>
         </div>
 
-        <div style="flex: 1; min-width: 200px;">
-          <label style="display: block; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; color: #1A1A1A;">Customizable</label>
-          <select v-model="galleryFilter.customizable" style="width: 100%; padding: 10px; border: 2px solid #ccc; border-radius: 6px;">
+        <div class="gallery-filter-item">
+          <label class="gallery-filter-label">Customizable</label>
+          <select v-model="galleryFilter.customizable" class="gallery-filter-select">
             <option value="">Show All</option>
             <option value="yes">Yes (Add names/colors)</option>
             <option value="no">No</option>
@@ -97,7 +97,7 @@ onMounted(async () => {
         </div>
       </div>
       
-      <div v-if="filteredGalleryDesigns.length === 0" class="empty-state" style="margin-top: 40px;">
+      <div v-if="filteredGalleryDesigns.length === 0" class="empty-state filtered-empty-state">
         No designs match your selected filters.
       </div>
 
@@ -114,7 +114,7 @@ onMounted(async () => {
           </router-link>
           
           <div class="card-content">
-            <router-link :to="`/design/${design.id}`" style="text-decoration: none;">
+            <router-link :to="`/design/${design.id}`" class="card-title-link">
               <h3>{{ design.title }}</h3>
             </router-link>
             
@@ -125,10 +125,10 @@ onMounted(async () => {
               <span v-for="sport in design.sports" :key="'s-'+sport" class="tag tag-sport">{{ sport }}</span>
               <span v-for="keyword in design.keywords" :key="'k-'+keyword" class="tag tag-keyword">{{ keyword }}</span>
             </div>
-            <span v-if="design.isCustomizable" class="tag" style="background: var(--accent); display: inline-block; margin-bottom: 15px;">Customizable</span>
+            <span v-if="design.isCustomizable" class="tag customizable-tag">Customizable</span>
 
-            <div v-if="currentUser && currentUser.uid === design.ownerId" style="border-top: 1px solid #eee; padding-top: 15px; margin-top: auto;">
-              <router-link :to="{ path: '/admin', query: { edit: design.id } }" class="btn-primary" style="font-size: 0.8rem; padding: 6px 12px; text-decoration: none; display: inline-block;">
+            <div v-if="currentUser && currentUser.uid === design.ownerId" class="owner-actions">
+              <router-link :to="{ path: '/admin', query: { edit: design.id } }" class="btn-primary edit-design-link">
                 Edit Design
               </router-link>
             </div>
@@ -142,6 +142,38 @@ onMounted(async () => {
 <style scoped>
 .gallery-container { max-width: 1200px; margin: 0 auto; }
 .loading, .empty-state { text-align: center; padding: 2rem; color: #666; }
+
+.gallery-filters {
+  display: flex;
+  gap: 15px;
+  margin: 20px 0;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  border: 3px solid #1A1A1A;
+  box-shadow: 4px 4px 0px rgba(0,0,0,0.1);
+  flex-wrap: wrap;
+}
+.gallery-filter-item {
+  flex: 1;
+  min-width: 200px;
+}
+.gallery-filter-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #1A1A1A;
+}
+.gallery-filter-select {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #ccc;
+  border-radius: 6px;
+}
+.filtered-empty-state {
+  margin-top: 40px;
+}
 
 .grid { 
   display: grid; 
@@ -173,6 +205,9 @@ onMounted(async () => {
 .card-content { padding: 15px; }
 .card-content h3 { margin: 0 0 10px 0; font-size: 1.2rem; color: var(--primary); }
 .card-content p { color: #555; font-size: 0.9rem; margin-bottom: 15px; line-height: 1.4; }
+.card-title-link {
+  text-decoration: none;
+}
 
 .tags { display: flex; flex-wrap: wrap; gap: 8px; }
 .tag { 
@@ -181,5 +216,21 @@ onMounted(async () => {
   border-radius: 12px; 
   font-size: 0.75rem; 
   color: #495057; 
+}
+.customizable-tag {
+  background: var(--accent);
+  display: inline-block;
+  margin-bottom: 15px;
+}
+.owner-actions {
+  border-top: 1px solid #eee;
+  padding-top: 15px;
+  margin-top: auto;
+}
+.edit-design-link {
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  text-decoration: none;
+  display: inline-block;
 }
 </style>

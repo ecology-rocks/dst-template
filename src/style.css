@@ -17,6 +17,11 @@ body {
   color: var(--text-color);
 }
 
+.m-l-10 {
+  margin-left: 10px;
+}
+
+
 .app-wrapper {
   display: flex;
   flex-direction: column;
@@ -164,7 +169,16 @@ button.text-danger:hover {
 .tag-sport { background-color: #e67e22; color: white; border-color: #d35400; }
 .tag-keyword { background-color: #95a5a6; color: white; border-color: #7f8c8d; }
 
-.unified-tags-display { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
+.unified-tags-display { 
+  display: flex; 
+  flex-wrap: wrap; 
+  gap: 8px; 
+  margin-bottom: 10px; 
+  min-height: 32px; 
+  padding: 5px; 
+  border: 1px dashed #ccc; 
+  border-radius: 6px;
+}
 
 /* Autocomplete dropdown styles */
 .autocomplete-wrapper { position: relative; width: 100%; }

@@ -260,17 +260,17 @@ const filteredDesigns = computed(() => {
 <div class="form-group">
         <label>Taxonomy & Tags (Search or Add New)</label>
         
-        <div class="unified-tags-display" style="margin-bottom: 10px; min-height: 32px; padding: 5px; border: 1px dashed #ccc; border-radius: 6px;">
+        <div class="unified-tags-display">
           <span v-for="breed in currentDesign.breeds" :key="'b-'+breed" class="tag tag-breed">
-            {{ breed }} <button type="button" @click="removeTag(breed, 'breed')" style="background:none;border:none;color:white;cursor:pointer;padding:0 0 0 5px;">&times;</button>
+            {{ breed }} <button type="button" @click="removeTag(breed, 'breed')" class="btn-remove">&times;</button>
           </span>
           <span v-for="sport in currentDesign.sports" :key="'s-'+sport" class="tag tag-sport">
-            {{ sport }} <button type="button" @click="removeTag(sport, 'sport')" style="background:none;border:none;color:white;cursor:pointer;padding:0 0 0 5px;">&times;</button>
+            {{ sport }} <button type="button" @click="removeTag(sport, 'sport')" class="btn-remove">&times;</button>
           </span>
           <span v-for="keyword in currentDesign.keywords" :key="'k-'+keyword" class="tag tag-keyword">
-            {{ keyword }} <button type="button" @click="removeTag(keyword, 'keyword')" style="background:none;border:none;color:white;cursor:pointer;padding:0 0 0 5px;">&times;</button>
+            {{ keyword }} <button type="button" @click="removeTag(keyword, 'keyword')" class="btn-remove">&times;</button>
           </span>
-          <span v-if="!currentDesign.breeds?.length && !currentDesign.sports?.length && !currentDesign.keywords?.length" style="color: #999; font-size: 0.9em; padding: 4px;">No tags added yet.</span>
+          <span v-if="!currentDesign.breeds?.length && !currentDesign.sports?.length && !currentDesign.keywords?.length" class="empty-tags-text">No tags added yet.</span>
         </div>
 
         <div class="autocomplete-wrapper">
@@ -290,18 +290,18 @@ const filteredDesigns = computed(() => {
               @click="addTag(tag.text, tag.type)"
             >
               <span>{{ tag.text }}</span>
-              <span :class="['tag', `tag-${tag.type}`]" style="font-size: 0.7em;">{{ tag.type }}</span>
+              <span :class="['tag', `tag-${tag.type}`, 'tag-type-pill']">{{ tag.type }}</span>
             </div>
             
-            <div v-if="!exactMatchExists" style="border-top: 2px solid #1A1A1A;">
+            <div v-if="!exactMatchExists" class="autocomplete-create-divider">
               <div class="autocomplete-action" @click="addTag(tagInput, 'breed')">
-                <strong>+ Add</strong> "{{ tagInput }}" as <span class="tag tag-breed" style="font-size: 0.7em;">Breed</span>
+                <strong>+ Add</strong> "{{ tagInput }}" as <span class="tag tag-breed tag-type-pill">Breed</span>
               </div>
               <div class="autocomplete-action" @click="addTag(tagInput, 'sport')">
-                <strong>+ Add</strong> "{{ tagInput }}" as <span class="tag tag-sport" style="font-size: 0.7em;">Sport</span>
+                <strong>+ Add</strong> "{{ tagInput }}" as <span class="tag tag-sport tag-type-pill">Sport</span>
               </div>
               <div class="autocomplete-action" @click="addTag(tagInput, 'keyword')">
-                <strong>+ Add</strong> "{{ tagInput }}" as <span class="tag tag-keyword" style="font-size: 0.7em;">Keyword</span>
+                <strong>+ Add</strong> "{{ tagInput }}" as <span class="tag tag-keyword tag-type-pill">Keyword</span>
               </div>
             </div>
           </div>
@@ -309,7 +309,7 @@ const filteredDesigns = computed(() => {
       </div>
 
       <div class="form-group">
-        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
+        <label class="customizable-label">
           <input v-model="currentDesign.isCustomizable" type="checkbox" />
           <strong>Design is Customizable</strong> (e.g., allows custom text or swappable elements)
         </label>
@@ -317,28 +317,28 @@ const filteredDesigns = computed(() => {
       <div class="form-group blanks-assignment">
         <label>Assign Blanks to Design</label>
         
-        <div class="filter-controls" style="display: flex; gap: 10px; margin-bottom: 15px;">
-          <input v-model="blankSearchQuery" type="text" placeholder="Search blanks..." style="flex: 2;" />
-          <select v-model="selectedCategory" style="flex: 1; padding: 10px; border-radius: 6px; border: 2px solid #1A1A1A;">
+        <div class="filter-controls">
+          <input v-model="blankSearchQuery" type="text" placeholder="Search blanks..." class="filter-search-input" />
+          <select v-model="selectedCategory" class="filter-category-select">
             <option value="">All Categories</option>
             <option v-for="cat in availableCategories" :key="cat" :value="cat">{{ cat }}</option>
           </select>
         </div>
 
-        <div class="blanks-list" style="max-height: 200px; overflow-y: auto; border: 2px solid #ccc; padding: 10px; border-radius: 6px; background: #fafafa;">
-          <div v-for="blank in filteredBlanks" :key="blank.id" style="margin-bottom: 8px;">
-            <label style="font-weight: normal; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+        <div class="blanks-list">
+          <div v-for="blank in filteredBlanks" :key="blank.id" class="blank-row">
+            <label class="blank-label">
               <input 
                 type="checkbox" 
                 :value="blank.id" 
                 v-model="currentDesign.assignedBlankIds"
               />
               {{ blank.name }}
-              <span class="tag" style="font-size: 0.7rem; padding: 2px 6px;">{{ blank.category }} &gt; {{ blank.subCategory }}</span>
-              <span v-if="!blank.isPublic" style="color: #C0392B; font-size: 0.8rem; font-weight: bold;">(Private)</span>
+              <span class="tag blank-category-tag">{{ blank.category }} &gt; {{ blank.subCategory }}</span>
+              <span v-if="!blank.isPublic" class="blank-private">(Private)</span>
             </label>
           </div>
-          <p v-if="filteredBlanks.length === 0" style="color: #666; font-size: 0.9em;">No blanks match your filters.</p>
+          <p v-if="filteredBlanks.length === 0" class="no-blanks-text">No blanks match your filters.</p>
         </div>
       </div>
 
@@ -364,25 +364,25 @@ const filteredDesigns = computed(() => {
 
     <hr />
 
-    <div class="design-list" style="margin-top: 40px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <div class="design-list">
+      <div class="design-list-header">
         <h3>Manage Designs ({{ filteredDesigns.length }})</h3>
       </div>
 
-      <div style="display: flex; gap: 10px; margin-bottom: 20px; background: #f1f2f6; padding: 15px; border-radius: 8px; border: 2px solid #1A1A1A;">
-        <input v-model="adminFilter.search" type="text" placeholder="Search titles..." style="flex: 2;" />
+      <div class="admin-filters">
+        <input v-model="adminFilter.search" type="text" placeholder="Search titles..." class="admin-search-input" />
         
-        <select v-model="adminFilter.breed" style="flex: 1; padding: 10px; border-radius: 6px; border: 2px solid #ccc;">
+        <select v-model="adminFilter.breed" class="admin-filter-select">
           <option value="">All Breeds</option>
           <option v-for="breed in adminUniqueBreeds" :key="breed" :value="breed">{{ breed }}</option>
         </select>
         
-        <select v-model="adminFilter.sport" style="flex: 1; padding: 10px; border-radius: 6px; border: 2px solid #ccc;">
+        <select v-model="adminFilter.sport" class="admin-filter-select">
           <option value="">All Sports</option>
           <option v-for="sport in adminUniqueSports" :key="sport" :value="sport">{{ sport }}</option>
         </select>
 
-        <select v-model="adminFilter.customizable" style="flex: 1; padding: 10px; border-radius: 6px; border: 2px solid #ccc;">
+        <select v-model="adminFilter.customizable" class="admin-filter-select">
           <option value="">Customizable: Any</option>
           <option value="yes">Yes</option>
           <option value="no">No</option>
@@ -403,24 +403,24 @@ const filteredDesigns = computed(() => {
             <template v-if="design.ownerId === currentUserUid">
               <td><strong>{{ design.title }}</strong></td>
               <td>
-                <div style="font-size: 0.8rem; color: #555;">
+                <div class="taxonomy-cell">
                   <span v-if="design.breeds?.length"><strong>Breeds:</strong> {{ design.breeds.join(', ') }}<br/></span>
                   <span v-if="design.sports?.length"><strong>Sports:</strong> {{ design.sports.join(', ') }}</span>
                 </div>
               </td>
               <td>
-                <span v-if="design.isCustomizable" class="tag" style="background: var(--accent);">Yes</span>
-                <span v-else style="color: #999; font-size: 0.8rem;">No</span>
+                <span v-if="design.isCustomizable" class="tag customizable-yes">Yes</span>
+                <span v-else class="customizable-no">No</span>
               </td>
               <td>
-                <button @click="editDesign(design)" class="btn-secondary" style="font-size: 0.8rem; padding: 5px 10px; margin-right: 5px;">Edit</button>
+                <button @click="editDesign(design)" class="btn-secondary compact-btn">Edit</button>
                 <button @click="deleteDesign(design.id)" class="text-danger">Delete</button>
               </td>
             </template>
           </tr>
         </tbody>
       </table>
-      <div v-if="filteredDesigns.length === 0" style="padding: 20px; text-align: center; color: #666;">No designs match your filters.</div>
+      <div v-if="filteredDesigns.length === 0" class="empty-designs-message">No designs match your filters.</div>
     </div>
   </div>
 </template>
@@ -438,4 +438,129 @@ input[type="text"], input[type="url"], textarea { width: 100%; padding: 8px; box
 table { width: 100%; border-collapse: collapse; margin-top: 20px; }
 th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
 .success-text { color: #4CAF50; font-size: 0.85em; margin-top: 5px; font-weight: bold; }
+.btn-remove { 
+  background:none;
+  border:none;
+  color:white;
+  cursor:pointer;
+  padding:0 0 0 5px;
+}
+.unified-tags-display {
+  margin-bottom: 10px;
+  min-height: 32px;
+  padding: 5px;
+  border: 1px dashed #ccc;
+  border-radius: 6px;
+}
+.empty-tags-text {
+  color: #999;
+  font-size: 0.9em;
+  padding: 4px;
+}
+.tag-type-pill {
+  font-size: 0.7em;
+}
+.autocomplete-create-divider {
+  border-top: 2px solid #1A1A1A;
+}
+.customizable-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: normal;
+}
+.filter-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+.filter-search-input {
+  flex: 2;
+}
+.filter-category-select {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  border: 2px solid #1A1A1A;
+}
+.blanks-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 2px solid #ccc;
+  padding: 10px;
+  border-radius: 6px;
+  background: #fafafa;
+}
+.blank-row {
+  margin-bottom: 8px;
+}
+.blank-label {
+  font-weight: normal;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.blank-category-tag {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+}
+.blank-private {
+  color: #C0392B;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+.no-blanks-text {
+  color: #666;
+  font-size: 0.9em;
+}
+.design-list {
+  margin-top: 40px;
+}
+.design-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+.admin-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  background: #f1f2f6;
+  padding: 15px;
+  border-radius: 8px;
+  border: 2px solid #1A1A1A;
+}
+.admin-search-input {
+  flex: 2;
+}
+.admin-filter-select {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  border: 2px solid #ccc;
+}
+.taxonomy-cell {
+  font-size: 0.8rem;
+  color: #555;
+}
+.customizable-yes {
+  background: var(--accent);
+}
+.customizable-no {
+  color: #999;
+  font-size: 0.8rem;
+}
+.compact-btn {
+  font-size: 0.8rem;
+  padding: 5px 10px;
+  margin-right: 5px;
+}
+.empty-designs-message {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+}
 </style>

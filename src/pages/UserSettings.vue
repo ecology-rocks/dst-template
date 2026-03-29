@@ -167,7 +167,7 @@ const saveProfile = async () => {
           <img :src="profile.photoUrl || 'https://via.placeholder.com/150'" alt="Profile Pic" class="avatar-preview" />
           <div>
             <label>Profile Picture</label>
-            <p style="font-size: 0.8rem; color: #666; margin: 0 0 10px 0;">Recommended: Square image. Max size: 2MB (JPEG, PNG, WEBP).</p>
+            <p class="help-text">Recommended: Square image. Max size: 2MB (JPEG, PNG, WEBP).</p>
             <input type="file" accept="image/png, image/jpeg, image/webp" @change="uploadAvatar" />
             <p v-if="uploadProgress > 0" class="progress-text">Uploading: {{ uploadProgress }}%</p>
           </div>
@@ -216,24 +216,24 @@ const saveProfile = async () => {
       
       <div v-if="profile.roles.isArtist" class="form-section artist-theme">
         <h3>Artist Shop Setup</h3>
-        <div class="form-group" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 2px dashed #ccc;">
+        <div class="form-group shop-url-section">
           <label>Your Custom Shop URL</label>
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="color: #666; font-weight: bold;">dogsporttees.com/shop/</span>
+          <div class="shop-url-row">
+            <span class="slug-prefix">dogsporttees.com/shop/</span>
             <input 
               v-model="profile.artistProfile.shopSlug" 
               @input="formatSlug"
               type="text" 
               placeholder="my-awesome-shop" 
-              style="flex: 1; border-color: var(--secondary);"
+              class="artist-slug-input"
             />
           </div>
-          <p style="font-size: 0.8rem; color: #666; margin: 5px 0 0 0;">This is how customers will find your storefront.</p>
+          <p class="field-hint">This is how customers will find your storefront.</p>
         </div>
-        <div class="form-group" style="margin-top: 20px;">
+        <div class="form-group form-group-spaced">
           <label>Year Started</label>
           <input v-model.number="profile.artistProfile.yearStarted" type="number" min="1900" :max="new Date().getFullYear()" placeholder="e.g., 2015" />
-          <p style="font-size: 0.8rem; color: #666; margin: 5px 0 0 0;">Show shoppers how long you've been creating art.</p>
+          <p class="field-hint">Show shoppers how long you've been creating art.</p>
         </div>
         <div class="form-group">
           <label>Artist Bio</label>
@@ -290,17 +290,17 @@ const saveProfile = async () => {
           <textarea v-model="profile.artistProfile.customReturnPolicy" rows="3" placeholder="Explain your rules..."></textarea>
         </div>
 
-        <hr style="margin: 25px 0; border-color: #ccc;" />
+        <hr class="section-divider" />
         
         <h4>Print-on-Demand Integrations</h4>
-        <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">Configure your Printify API connection to automate order fulfillment.</p>
+        <p class="printify-intro">Configure your Printify API connection to automate order fulfillment.</p>
         
-        <div class="form-group" style="display: flex; gap: 15px;">
-          <div style="flex: 2;">
+        <div class="form-group integration-fields">
+          <div class="integration-field-key">
             <label>Printify API Key (Personal Access Token)</label>
             <input v-model="profile.artistProfile.printifyApiKey" type="password" placeholder="ptf_..." />
           </div>
-          <div style="flex: 1;">
+          <div class="integration-field-id">
             <label>Printify Shop ID</label>
             <input v-model="profile.artistProfile.printifyShopId" type="text" placeholder="e.g., 1234567" />
           </div>
@@ -308,8 +308,8 @@ const saveProfile = async () => {
       </div>
 
       <div class="form-actions">
-        <button type="submit" class="btn-primary" style="font-size: 1.1rem; padding: 12px 24px;">Save Settings</button>
-        <span v-if="saveSuccess" style="color: #4CAF50; font-weight: bold; margin-left: 15px;">Settings saved successfully!</span>
+        <button type="submit" class="btn-primary btn-save">Save Settings</button>
+        <span v-if="saveSuccess" class="save-success">Settings saved successfully!</span>
       </div>
     </form>
   </div>
@@ -453,4 +453,51 @@ input:focus, textarea:focus, select:focus { border-color: var(--secondary); outl
 /* Quill Overrides */
 .editor-wrapper :deep(.ql-toolbar) { border: 2px solid #ccc !important; border-bottom: none !important; border-radius: 6px 6px 0 0; background: #f9f9f9; }
 .editor-wrapper :deep(.ql-container) { border: 2px solid #ccc !important; border-radius: 0 0 6px 6px; min-height: 150px; background: white; font-size: 1rem; font-family: inherit; }
+.shop-url-section {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  border: 2px dashed #ccc;
+}
+.shop-url-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.artist-slug-input {
+  flex: 1;
+  border-color: var(--secondary);
+}
+.field-hint {
+  font-size: 0.8rem;
+  color: #666;
+  margin: 5px 0 0 0;
+}
+.form-group-spaced {
+  margin-top: 20px;
+}
+.printify-intro {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 15px;
+}
+.integration-fields {
+  display: flex;
+  gap: 15px;
+}
+.integration-field-key {
+  flex: 2;
+}
+.integration-field-id {
+  flex: 1;
+}
+.btn-save {
+  font-size: 1.1rem;
+  padding: 12px 24px;
+}
+.save-success {
+  color: #4CAF50;
+  font-weight: bold;
+  margin-left: 15px;
+}
 </style>
