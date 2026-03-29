@@ -65,6 +65,14 @@ const handleCheckout = async () => {
               <h4>{{ item.designTitle }}</h4>
               <p class="item-meta">{{ item.blankName }}</p>
               <p class="item-meta">Color: {{ item.color }} | Size: {{ item.size }}</p>
+              <div v-if="item.customization" class="customization-summary">
+                <p v-for="field in item.customization.textFields || []" :key="field.id || field.label" class="item-meta customization-line">
+                  {{ field.label }}: {{ field.text }}
+                </p>
+                <p v-if="item.customization.notes" class="item-meta customization-line">
+                  Notes: {{ item.customization.notes }}
+                </p>
+              </div>
               
               <div class="item-actions">
                 <span class="item-price">${{ (item.price / 100).toFixed(2) }}</span>
@@ -219,6 +227,12 @@ const handleCheckout = async () => {
   margin: 0 0 4px 0;
   font-size: 0.85rem;
   color: #666;
+}
+.customization-summary {
+  margin-top: 6px;
+}
+.customization-line {
+  color: #444;
 }
 
 .item-actions {

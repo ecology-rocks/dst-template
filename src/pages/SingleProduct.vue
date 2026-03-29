@@ -5,6 +5,12 @@ import { doc, getDoc, collection, query, where, getDocs, documentId } from 'fire
 import { db } from '../firebase'
 import { useCart } from '../composables/useCart'
 
+const FONT_CLASS_MAP = {
+  block: 'font-block',
+  cursive: 'font-cursive',
+  handwritten: 'font-handwritten'
+}
+
 const route = useRoute()
 const design = ref(null)
 const artist = ref(null)
@@ -17,6 +23,7 @@ const selectedBlank = ref(null)
 const selectedVariant = ref(null)
 const selectedSize = ref(null)
 const selectedMockupIndex = ref(0)
+const customerCustomization = ref({ textValues: {}, notes: '' })
 
 const { addToCart } = useCart()
 
@@ -112,6 +119,53 @@ const currentDesignAsset = computed(() => {
     : (design.value.assets.lightInk || design.value.assets.darkInk)
 })
 
+const showDesignOverlay = computed(() => {
+  if (!currentDesignAsset.value) return false
+  return !currentMockupData.value?.printArea?.noOverlayRequired
+})
+
+const customizationFields = computed(() => {
+  if (!design.value?.isCustomizable) return []
+  return design.value.customization?.textFields || []
+})
+
+const customizationNotesEnabled = computed(() => !!design.value?.customization?.notesEnabled)
+
+const customizationPreviewStyle = (field) => ({
+  top: `${field.area?.top ?? 35}%`,
+  left: `${field.area?.left ?? 20}%`,
+  width: `${field.area?.width ?? 60}%`,
+  height: `${field.area?.height ?? 16}%`
+})
+
+const customizationPreviewText = (field) => {
+  const enteredText = customerCustomization.value.textValues[field.id] || ''
+  return enteredText || field.placeholder || field.label
+}
+
+const buildCustomizationPayload = () => {
+  if (!design.value?.isCustomizable) return null
+
+  const filledTextFields = customizationFields.value
+    .map(field => ({
+      id: field.id,
+      label: field.label,
+      text: (customerCustomization.value.textValues[field.id] || '').trim(),
+      fontStyle: field.fontStyle,
+      characterLimit: field.characterLimit,
+    }))
+    .filter(field => field.text)
+
+  const notes = customerCustomization.value.notes.trim()
+
+  if (!filledTextFields.length && !notes) return null
+
+  return {
+    textFields: filledTextFields,
+    notes,
+  }
+}
+
 const calculatedPrice = computed(() => {
   if (!selectedVariant.value) return 0
   const base = selectedVariant.value.basePrice || 0
@@ -121,6 +175,8 @@ const calculatedPrice = computed(() => {
 
 const handleAddToCart = () => {
   if (!selectedVariant.value || !selectedBlank.value || !selectedSize.value) return
+
+  const customization = buildCustomizationPayload()
   
   const productData = {
     designId: design.value.id,
@@ -132,7 +188,8 @@ const handleAddToCart = () => {
     size: selectedSize.value.name,
     price: calculatedPrice.value,
     thumbnailUrl: currentMockupUrl.value,
-    designAssetUrl: currentDesignAsset.value
+    designAssetUrl: currentDesignAsset.value,
+    customization
   }
   
   addToCart(productData)
@@ -149,7 +206,22 @@ const handleAddToCart = () => {
         <div class="preview-stage" @mousemove="handleZoom" @mouseenter="isZoomed = true" @mouseleave="isZoomed = false">
           <div class="zoom-wrapper" :class="{ 'is-zoomed': isZoomed }" :style="{ transformOrigin: zoomOrigin }">
             <img :src="currentMockupUrl" alt="Product Mockup" class="mockup-base" />
-            <img v-if="currentMockupUrl && currentDesignAsset" :src="currentDesignAsset" alt="Design Overlay" class="design-overlay" :style="printAreaStyle" />
+            <div v-if="currentMockupUrl && showDesignOverlay" class="design-overlay-container" :style="printAreaStyle">
+              <img :src="currentDesignAsset" alt="Design Overlay" class="design-overlay" />
+              <div
+                v-for="field in customizationFields"
+                :key="field.id"
+                class="custom-text-preview-box"
+                :style="customizationPreviewStyle(field)"
+              >
+                <span
+                  class="custom-text-preview"
+                  :class="[FONT_CLASS_MAP[field.fontStyle] || FONT_CLASS_MAP.block, { 'is-placeholder': !(customerCustomization.textValues[field.id] || '').trim() }]"
+                >
+                  {{ customizationPreviewText(field) }}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
         
@@ -211,6 +283,36 @@ const handleAddToCart = () => {
             </div>
           </div>
 
+          <div v-if="design.isCustomizable && (customizationFields.length > 0 || customizationNotesEnabled)" class="config-section">
+            <h3 class="config-title">4. Personalize Your Design</h3>
+
+            <div v-for="field in customizationFields" :key="field.id" class="customization-input-row">
+              <label :for="field.id">{{ field.label }}</label>
+              <input
+                :id="field.id"
+                v-model="customerCustomization.textValues[field.id]"
+                type="text"
+                :maxlength="field.characterLimit"
+                :placeholder="field.placeholder || `Enter ${field.label.toLowerCase()}`"
+                class="customization-input"
+              />
+              <span class="customization-char-count">{{ (customerCustomization.textValues[field.id] || '').length }}/{{ field.characterLimit }}</span>
+            </div>
+
+            <div v-if="customizationNotesEnabled" class="customization-input-row">
+              <label for="customer-notes">Notes for the Artist</label>
+              <textarea
+                id="customer-notes"
+                v-model="customerCustomization.notes"
+                rows="4"
+                maxlength="500"
+                placeholder="Add instructions, context, or other customization details here."
+                class="customization-notes"
+              ></textarea>
+              <span class="customization-char-count">{{ customerCustomization.notes.length }}/500</span>
+            </div>
+          </div>
+
           <div v-if="selectedVariant && selectedSize" class="price-display">
             <h2 class="price-val">${{ (calculatedPrice / 100).toFixed(2) }}</h2>
           </div>
@@ -250,7 +352,38 @@ const handleAddToCart = () => {
 .zoom-wrapper { position: relative; width: 100%; transition: transform 0.1s ease-out; }
 .zoom-wrapper.is-zoomed { transform: scale(2.5); }
 .mockup-base { width: 100%; display: block; object-fit: cover; }
-.design-overlay { position: absolute; pointer-events: none; }
+.design-overlay-container { position: absolute; pointer-events: none; }
+.design-overlay { width: 100%; height: 100%; display: block; }
+.custom-text-preview-box {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  text-align: center;
+}
+.custom-text-preview {
+  width: 100%;
+  color: rgba(20, 20, 20, 0.9);
+  line-height: 1.1;
+  font-size: clamp(10px, 1.7vw, 22px);
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 1px rgba(255,255,255,0.4);
+}
+.custom-text-preview.is-placeholder {
+  opacity: 0.45;
+}
+.font-block {
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.font-cursive {
+  font-family: 'Brush Script MT', 'Segoe Script', cursive;
+}
+.font-handwritten {
+  font-family: 'Comic Sans MS', 'Trebuchet MS', cursive;
+}
 
 /* Thumbnails */
 .thumbnail-strip { display: flex; gap: 10px; margin-top: 15px; overflow-x: auto; padding-bottom: 5px; }
@@ -268,6 +401,22 @@ const handleAddToCart = () => {
 .configurator { border-top: 2px dashed #ccc; padding-top: 20px; margin-top: 20px; }
 .config-section { margin-bottom: 25px; }
 .config-title { margin: 0 0 10px 0; font-size: 1.1rem; color: #1A1A1A; }
+.customization-input-row { margin-bottom: 14px; }
+.customization-input,
+.customization-notes {
+  width: 100%;
+  border: 2px solid #ccc;
+  border-radius: 6px;
+  padding: 10px;
+  box-sizing: border-box;
+  font: inherit;
+}
+.customization-char-count {
+  display: block;
+  margin-top: 4px;
+  color: #666;
+  font-size: 0.8rem;
+}
 
 .button-group { display: flex; flex-wrap: wrap; gap: 10px; }
 .select-btn { background: #fff; border: 2px solid #ccc; border-radius: 6px; padding: 10px 15px; cursor: pointer; font-weight: bold; color: #555; transition: all 0.1s; }

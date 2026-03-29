@@ -6,6 +6,26 @@ import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } f
 import { db, storage } from '../../firebase'
 import { useRoute, useRouter } from 'vue-router'
 
+const FONT_STYLE_OPTIONS = [
+  { value: 'block', label: 'Blocky' },
+  { value: 'cursive', label: 'Cursive' },
+  { value: 'handwritten', label: 'Handwritten' },
+]
+
+const getDefaultCustomization = () => ({
+  notesEnabled: true,
+  textFields: []
+})
+
+const getDefaultTextField = (index) => ({
+  id: `text_${Date.now()}_${index}`,
+  label: `Text Area ${index + 1}`,
+  placeholder: '',
+  characterLimit: 20,
+  fontStyle: 'block',
+  area: { top: 35, left: 20, width: 60, height: 16 }
+})
+
 const designsCollection = collection(db, 'designs')
 const route = useRoute()
 const router = useRouter()
@@ -20,11 +40,28 @@ const tagInput = ref('')
 const showSuggestions = ref(false)
 const currentUserUid = ref(null)
 const assetVariantMode = ref('two')
+const textFieldModal = ref({
+  isOpen: false,
+  fieldRef: null,
+  imageUrl: '',
+  area: { top: 35, left: 20, width: 60, height: 16 }
+})
+const textCanvasRef = ref(null)
+let isDraggingTextField = false
+let isResizingTextField = false
+let textStartX = 0
+let textStartY = 0
+let textInitialTop = 0
+let textInitialLeft = 0
+let textInitialWidth = 0
+let textInitialHeight = 0
 
 const currentDesign = ref({
   id: null,
   title: '',
   description: '',
+  isAiAssisted: null,
+  customization: getDefaultCustomization(),
   breeds: [],     // <-- NEW
   sports: [],     // <-- NEW
   keywords: [],
@@ -185,8 +222,106 @@ const setAssetVariantMode = (mode) => {
 }
 
 const hasSingleAsset = computed(() => !!(currentDesign.value.assets.darkInk || currentDesign.value.assets.lightInk))
+const customizationPreviewAsset = computed(() => currentDesign.value.assets.darkInk || currentDesign.value.assets.lightInk || '')
+
+const addCustomizationField = () => {
+  if (!currentDesign.value.customization) {
+    currentDesign.value.customization = getDefaultCustomization()
+  }
+
+  if (currentDesign.value.customization.textFields.length >= 3) return
+
+  currentDesign.value.customization.textFields.push(getDefaultTextField(currentDesign.value.customization.textFields.length))
+}
+
+const removeCustomizationField = (fieldId) => {
+  currentDesign.value.customization.textFields = currentDesign.value.customization.textFields.filter(field => field.id !== fieldId)
+}
+
+const openTextFieldModal = (field) => {
+  if (!customizationPreviewAsset.value) return
+  textFieldModal.value.fieldRef = field
+  textFieldModal.value.imageUrl = customizationPreviewAsset.value
+  textFieldModal.value.area = { ...field.area }
+  textFieldModal.value.isOpen = true
+}
+
+const closeTextFieldModal = () => {
+  textFieldModal.value.isOpen = false
+}
+
+const saveTextFieldArea = () => {
+  if (textFieldModal.value.fieldRef) {
+    textFieldModal.value.fieldRef.area = { ...textFieldModal.value.area }
+  }
+  closeTextFieldModal()
+}
+
+const startTextFieldDrag = (event) => {
+  if (isResizingTextField) return
+  isDraggingTextField = true
+  textStartX = event.clientX || event.touches?.[0].clientX
+  textStartY = event.clientY || event.touches?.[0].clientY
+  textInitialTop = textFieldModal.value.area.top
+  textInitialLeft = textFieldModal.value.area.left
+  window.addEventListener('mousemove', onTextFieldDrag)
+  window.addEventListener('mouseup', stopTextFieldDrag)
+}
+
+const onTextFieldDrag = (event) => {
+  if (!isDraggingTextField || !textCanvasRef.value) return
+  const currentX = event.clientX || event.touches?.[0].clientX
+  const currentY = event.clientY || event.touches?.[0].clientY
+  const rect = textCanvasRef.value.getBoundingClientRect()
+  textFieldModal.value.area.left = Math.max(0, Math.min(100 - textFieldModal.value.area.width, textInitialLeft + (((currentX - textStartX) / rect.width) * 100)))
+  textFieldModal.value.area.top = Math.max(0, Math.min(100 - textFieldModal.value.area.height, textInitialTop + (((currentY - textStartY) / rect.height) * 100)))
+}
+
+const stopTextFieldDrag = () => {
+  isDraggingTextField = false
+  window.removeEventListener('mousemove', onTextFieldDrag)
+  window.removeEventListener('mouseup', stopTextFieldDrag)
+}
+
+const startTextFieldResize = (event) => {
+  event.stopPropagation()
+  isResizingTextField = true
+  textStartX = event.clientX || event.touches?.[0].clientX
+  textStartY = event.clientY || event.touches?.[0].clientY
+  textInitialWidth = textFieldModal.value.area.width
+  textInitialHeight = textFieldModal.value.area.height
+  window.addEventListener('mousemove', onTextFieldResize)
+  window.addEventListener('mouseup', stopTextFieldResize)
+}
+
+const onTextFieldResize = (event) => {
+  if (!isResizingTextField || !textCanvasRef.value) return
+  const currentX = event.clientX || event.touches?.[0].clientX
+  const currentY = event.clientY || event.touches?.[0].clientY
+  const rect = textCanvasRef.value.getBoundingClientRect()
+  const nextWidth = textInitialWidth + (((currentX - textStartX) / rect.width) * 100)
+  const nextHeight = textInitialHeight + (((currentY - textStartY) / rect.height) * 100)
+  textFieldModal.value.area.width = Math.max(10, Math.min(100 - textFieldModal.value.area.left, nextWidth))
+  textFieldModal.value.area.height = Math.max(8, Math.min(100 - textFieldModal.value.area.top, nextHeight))
+}
+
+const stopTextFieldResize = () => {
+  isResizingTextField = false
+  window.removeEventListener('mousemove', onTextFieldResize)
+  window.removeEventListener('mouseup', stopTextFieldResize)
+}
 
 const saveDesign = async () => {
+  const auth = getAuth()
+  const user = auth.currentUser
+
+  if (!user) {
+    alert('You must be logged in to save designs. Please sign in again.')
+    return
+  }
+
+  // Refresh token to avoid stale-session permission issues.
+  await user.getIdToken(true)
 
   try {
     if (assetVariantMode.value === 'one') {
@@ -200,14 +335,16 @@ const saveDesign = async () => {
     if (isEditing.value) {
       const docRef = doc(db, 'designs', currentDesign.value.id)
       const dataToUpdate = { ...currentDesign.value }
+      if (!dataToUpdate.ownerId) {
+        dataToUpdate.ownerId = user.uid
+      }
       delete dataToUpdate.id // Don't write the ID to the document fields
       await updateDoc(docRef, dataToUpdate)
     } else {
-      const auth = getAuth()
       const dataToAdd = { 
         ...currentDesign.value, 
         createdAt: new Date(),
-        ownerId: auth.currentUser.uid // <-- Stamps the creator's UID
+        ownerId: user.uid // <-- Stamps the creator's UID
       }
       delete dataToAdd.id
       await addDoc(designsCollection, dataToAdd)
@@ -216,7 +353,12 @@ const saveDesign = async () => {
     resetForm()
   } catch (error) {
     console.error("Error saving design: ", error)
-    alert("Failed to save design. Check console.")
+    const details = error?.code ? `${error.code}: ${error.message}` : (error?.message || 'Unknown error')
+    if (error?.code === 'permission-denied') {
+      alert(`Save blocked by Firestore permissions.\n\n${details}\n\nTry signing out/in and reloading. If it persists, verify deployed Firestore rules for the active project.`)
+      return
+    }
+    alert(`Failed to save design.\n\n${details}`)
   }
 }
 
@@ -233,6 +375,19 @@ const editDesign = (design) => {
   currentDesign.value = { 
     ...design,
     // Add fallbacks for older documents that lack these fields
+    isAiAssisted: typeof design.isAiAssisted === 'boolean' ? design.isAiAssisted : false,
+    customization: {
+      ...getDefaultCustomization(),
+      ...(design.customization || {}),
+      textFields: (design.customization?.textFields || []).map((field, index) => ({
+        ...getDefaultTextField(index),
+        ...field,
+        area: {
+          ...getDefaultTextField(index).area,
+          ...(field.area || {})
+        }
+      }))
+    },
     breeds: design.breeds || [],
     sports: design.sports || [],
     keywords: design.keywords || [],
@@ -258,7 +413,7 @@ const resetForm = () => {
   showSuggestions.value = false
   assetVariantMode.value = 'two'
   currentDesign.value = {
-    id: null, title: '', description: '', keywords: [], breeds: [], sports: [], 
+    id: null, title: '', description: '', isAiAssisted: null, customization: getDefaultCustomization(), keywords: [], breeds: [], sports: [], 
     isCustomizable: false, assets: { darkInk: '', lightInk: '' }, assignedBlankIds: [], isActive: true
   }
 }
@@ -351,11 +506,88 @@ const filteredDesigns = computed(() => {
       </div>
 
       <div class="form-group">
+        <label>AI-Assisted Design?</label>
+        <div class="ai-radio-group">
+          <label class="ai-radio-option">
+            <input v-model="currentDesign.isAiAssisted" type="radio" :value="true" required />
+            Yes I did use AI
+          </label>
+          <label class="ai-radio-option">
+            <input v-model="currentDesign.isAiAssisted" type="radio" :value="false" required />
+            No I did not
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
         <label class="customizable-label">
           <input v-model="currentDesign.isCustomizable" type="checkbox" />
           <strong>Design is Customizable</strong> (e.g., allows custom text or swappable elements)
         </label>
       </div>
+
+      <div v-if="currentDesign.isCustomizable" class="form-group customization-builder">
+        <div class="customization-header-row">
+          <label>Customization Setup</label>
+          <button
+            type="button"
+            class="btn-secondary compact-btn"
+            @click="addCustomizationField"
+            :disabled="currentDesign.customization.textFields.length >= 3"
+          >
+            + Add Text Area
+          </button>
+        </div>
+
+        <p class="customization-help-text">
+          Add up to three text areas. Position each box over the design asset so customers can preview where their text will appear.
+        </p>
+
+        <label class="customizable-label customization-notes-toggle">
+          <input v-model="currentDesign.customization.notesEnabled" type="checkbox" />
+          <strong>Enable customer notes</strong> (for special instructions or non-text customization details)
+        </label>
+
+        <p v-if="!customizationPreviewAsset" class="customization-warning">
+          Upload at least one design asset before positioning customization fields.
+        </p>
+
+        <div v-if="currentDesign.customization.textFields.length === 0" class="customization-empty-state">
+          No text areas configured yet.
+        </div>
+
+        <div v-for="(field, fieldIndex) in currentDesign.customization.textFields" :key="field.id" class="customization-field-card">
+          <div class="customization-field-grid">
+            <div>
+              <label>Field Label</label>
+              <input v-model="field.label" type="text" placeholder="e.g., Dog Name" />
+            </div>
+            <div>
+              <label>Placeholder (optional)</label>
+              <input v-model="field.placeholder" type="text" placeholder="e.g., Champion" />
+            </div>
+            <div>
+              <label>Character Limit</label>
+              <input v-model.number="field.characterLimit" type="number" min="1" max="100" />
+            </div>
+            <div>
+              <label>Font Style</label>
+              <select v-model="field.fontStyle">
+                <option v-for="font in FONT_STYLE_OPTIONS" :key="font.value" :value="font.value">{{ font.label }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="customization-field-actions">
+            <span class="customization-field-meta">Text Area {{ fieldIndex + 1 }}: top {{ Math.round(field.area.top) }}%, left {{ Math.round(field.area.left) }}%, width {{ Math.round(field.area.width) }}%, height {{ Math.round(field.area.height) }}%</span>
+            <div class="customization-field-buttons">
+              <button type="button" class="btn-secondary compact-btn" :disabled="!customizationPreviewAsset" @click="openTextFieldModal(field)">Position Field</button>
+              <button type="button" class="text-danger" @click="removeCustomizationField(field.id)">Remove</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="form-group blanks-assignment">
         <label>Assign Blanks to Design</label>
         
@@ -488,6 +720,34 @@ const filteredDesigns = computed(() => {
       <div v-if="filteredDesigns.length === 0" class="empty-designs-message">No designs match your filters.</div>
     </div>
   </div>
+
+  <div v-if="textFieldModal.isOpen" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Position Text Area</h3>
+        <button type="button" @click="closeTextFieldModal" class="text-danger close-modal-btn">&times;</button>
+      </div>
+
+      <p class="modal-instructions">Drag the box to position it. Drag the bottom-right corner to resize it.</p>
+
+      <div class="text-canvas-container" ref="textCanvasRef">
+        <img :src="textFieldModal.imageUrl" alt="Design asset preview" class="text-canvas-image" />
+        <div
+          class="text-field-box"
+          :style="{ top: `${textFieldModal.area.top}%`, left: `${textFieldModal.area.left}%`, width: `${textFieldModal.area.width}%`, height: `${textFieldModal.area.height}%` }"
+          @mousedown="startTextFieldDrag"
+        >
+          <span class="text-field-box-label">Custom Text</span>
+          <div class="resize-handle" @mousedown="startTextFieldResize"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" @click="closeTextFieldModal" class="btn-secondary">Cancel</button>
+        <button type="button" @click="saveTextFieldArea" class="btn-primary">Save Position</button>
+      </div>
+    </div>
+  </div>
 </template>
 
 
@@ -534,6 +794,72 @@ th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
   gap: 8px;
   cursor: pointer;
   font-weight: normal;
+}
+.ai-radio-group {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ai-radio-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: normal;
+  margin: 0;
+  cursor: pointer;
+}
+.customization-builder {
+  border: 1px dashed #ccc;
+  border-radius: 8px;
+  padding: 14px;
+  background: #fafafa;
+}
+.customization-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.customization-help-text,
+.customization-warning,
+.customization-empty-state {
+  margin: 0 0 12px 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+.customization-warning {
+  color: #a15c00;
+}
+.customization-notes-toggle {
+  margin-bottom: 12px;
+}
+.customization-field-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px;
+  background: white;
+  margin-bottom: 12px;
+}
+.customization-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+.customization-field-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.customization-field-meta {
+  color: #666;
+  font-size: 0.85rem;
+}
+.customization-field-buttons {
+  display: flex;
+  gap: 8px;
 }
 .filter-controls {
   display: flex;
@@ -653,5 +979,88 @@ th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
 }
 .asset-upload-label {
   margin-bottom: 8px;
+}
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+.modal-content {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 700px;
+  border: 4px solid #1A1A1A;
+  box-shadow: 8px 8px 0px rgba(0,0,0,1);
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+.close-modal-btn {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  cursor: pointer;
+}
+.modal-instructions {
+  font-size: 0.9rem;
+  color: #666;
+}
+.text-canvas-container {
+  position: relative;
+  width: 100%;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f1f2f6;
+  margin-top: 12px;
+}
+.text-canvas-image {
+  width: 100%;
+  display: block;
+}
+.text-field-box {
+  position: absolute;
+  border: 2px dashed #1A1A1A;
+  background: rgba(30, 144, 255, 0.22);
+  cursor: move;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.text-field-box-label {
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #1A1A1A;
+  pointer-events: none;
+}
+.resize-handle {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 15px;
+  height: 15px;
+  background: var(--primary);
+  border: 2px solid white;
+  border-radius: 50%;
+  cursor: nwse-resize;
+}
+.modal-footer {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 </style>

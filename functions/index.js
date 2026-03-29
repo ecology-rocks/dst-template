@@ -22,25 +22,55 @@ exports.createStripeCheckout = onRequest({
     const { cart, customerEmail } = req.body;
     if (!cart || cart.length === 0) return res.status(400).send("Cart is empty.");
 
-    const lineItems = cart.map((item) => ({
+    const lineItems = cart.map((item) => {
+      const textFields = Array.isArray(item.customization?.textFields) ? item.customization.textFields : [];
+      const customizationSummaryParts = textFields
+        .filter((field) => field?.label && field?.text)
+        .map((field) => `${field.label}: ${field.text}`);
+
+      if (item.customization?.notes) {
+        customizationSummaryParts.push(`Notes: ${item.customization.notes}`);
+      }
+
+      const baseDescription = `${item.blankName} | Color: ${item.color} | Size: ${item.size}`;
+      const customizationDescription = customizationSummaryParts.length
+        ? ` | Custom: ${customizationSummaryParts.join(' / ')}`
+        : "";
+      const finalDescription = `${baseDescription}${customizationDescription}`.slice(0, 499);
+
+      const customization = {
+        customText1Label: textFields[0]?.label || "",
+        customText1Value: textFields[0]?.text || "",
+        customText1Font: textFields[0]?.fontStyle || "",
+        customText2Label: textFields[1]?.label || "",
+        customText2Value: textFields[1]?.text || "",
+        customText2Font: textFields[1]?.fontStyle || "",
+        customText3Label: textFields[2]?.label || "",
+        customText3Value: textFields[2]?.text || "",
+        customText3Font: textFields[2]?.fontStyle || "",
+        customNotes: item.customization?.notes || "",
+      };
+
+      return {
       price_data: {
         currency: "usd",
         product_data: {
           name: item.designTitle,
-          description: `${item.blankName} | Color: ${item.color} | Size: ${item.size}`,
+          description: finalDescription,
           images: [item.designAssetUrl], 
           metadata: {
             designId: item.designId,
             sku: item.variantSku,
             blankName: item.blankName,
             color: item.color,
-            size: item.size
+            size: item.size,
+            ...customization,
           },
         },
         unit_amount: item.price,
       },
       quantity: item.quantity,
-    }));
+    }});
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -106,7 +136,17 @@ exports.stripeWebhook = onRequest({
           color: product.metadata.color || "N/A",
           size: product.metadata.size || "N/A",
           sku: product.metadata.sku,
-          designId: designId
+          designId: designId,
+          customization: {
+            textFields: [1, 2, 3]
+              .map((index) => ({
+                label: product.metadata[`customText${index}Label`] || "",
+                text: product.metadata[`customText${index}Value`] || "",
+                fontStyle: product.metadata[`customText${index}Font`] || "",
+              }))
+              .filter((field) => field.label && field.text),
+            notes: product.metadata.customNotes || "",
+          },
         };
 
         // Initialize the array for this seller if it doesn't exist yet
@@ -212,6 +252,7 @@ exports.lookupOrders = onRequest({
             blankName: item.blankName || "",
             color: item.color || "",
             size: item.size || "",
+            customization: item.customization || null,
           }))
           : [],
       };

@@ -130,6 +130,12 @@ const triggerPrint = (order) => {
                 <span class="item-meta">{{ item.blankName }}</span>
                 <span class="item-meta">Color: {{ item.color }} | Size: {{ item.size }}</span>
                 <span class="item-meta">Qty: {{ item.quantity }}</span>
+                <span v-for="field in item.customization?.textFields || []" :key="field.label + field.text" class="item-meta customization-meta">
+                  {{ field.label }}: {{ field.text }}
+                </span>
+                <span v-if="item.customization?.notes" class="item-meta customization-meta">
+                  Notes: {{ item.customization.notes }}
+                </span>
               </div>
             </div>
           </div>
@@ -261,6 +267,7 @@ const triggerPrint = (order) => {
 .item-thumb { width: 60px; height: 60px; object-fit: contain; border: 1px solid #ccc; background: white; border-radius: 4px; padding: 4px; }
 .item-details { display: flex; flex-direction: column; justify-content: center; }
 .item-meta { font-size: 0.85rem; color: #666; margin-top: 2px; }
+.customization-meta { color: #333; }
 
 .address-box { background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #ccc; margin-bottom: 15px; }
 .address-line { margin: 0 0 4px 0; color: #333; }

@@ -6,7 +6,7 @@ import { getAuth } from 'firebase/auth'
 import { db, storage } from '../../firebase'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
-import AppModal from '../components/AppModal.vue'
+import AppModal from '@components/AppModal.vue'
 
 // Add this near the top of your constants
 const SIZE_PRESETS = {
@@ -155,7 +155,7 @@ const uploadVariantPhotos = async (event, variantIndex) => {
     await new Promise((resolve, reject) => {
       uploadTask.on('state_changed', null, reject, async () => {
         const url = await getDownloadURL(uploadTask.snapshot.ref)
-        variant.mockups.push({ url: url, printArea: { top: 25, left: 35, width: 30 } })
+        variant.mockups.push({ url: url, printArea: { top: 25, left: 35, width: 30, noOverlayRequired: false } })
         resolve()
       })
     })
@@ -228,14 +228,14 @@ const resetForm = () => {
 }
 
 // --- Modal & Drag/Drop Logic (Kept exactly as it was) ---
-const modalState = ref({ isOpen: false, mockupRef: null, url: '', area: { top: 0, left: 0, width: 0 } })
+const modalState = ref({ isOpen: false, mockupRef: null, url: '', area: { top: 0, left: 0, width: 0, noOverlayRequired: false } })
 const canvasRef = ref(null)
 let isDragging = false, isResizing = false, startX = 0, startY = 0, initialTop = 0, initialLeft = 0, initialWidth = 0
 
 const openPositionModal = (mockup) => {
   modalState.value.mockupRef = mockup
   modalState.value.url = mockup.url
-  modalState.value.area = { ...mockup.printArea }
+  modalState.value.area = { noOverlayRequired: false, ...(mockup.printArea || {}) }
   modalState.value.isOpen = true
 }
 const closeModal = () => modalState.value.isOpen = false
@@ -490,6 +490,7 @@ const stopResize = () => { isResizing = false; window.removeEventListener('mouse
         <img :src="modalState.url" alt="Mockup" class="canvas-bg" />
         
         <div 
+          v-if="!modalState.area.noOverlayRequired"
           class="print-area-box"
           :style="{ top: modalState.area.top + '%', left: modalState.area.left + '%', width: modalState.area.width + '%' }"
           @mousedown="startDrag"
@@ -498,6 +499,11 @@ const stopResize = () => { isResizing = false; window.removeEventListener('mouse
           <span class="box-label">Print Area</span>
         </div>
       </div>
+
+      <label class="modal-toggle-row">
+        <input v-model="modalState.area.noOverlayRequired" type="checkbox" />
+        No overlay required for this mockup image
+      </label>
 
       <div class="modal-footer">
         <button type="button" @click="closeModal" class="btn-secondary">Cancel</button>
@@ -597,6 +603,13 @@ th { background-color: #f1f2f6; font-weight: bold; }
 .modal-header { display: flex; justify-content: space-between; margin-bottom: 15px; }
 .close-modal-btn { font-size: 1.5rem; }
 .modal-instructions { font-size: 0.9em; color: #666; margin-bottom: 15px; }
+.modal-toggle-row {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: normal;
+}
 .modal-footer { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
 
 .canvas-container { position: relative; width: 100%; background: #f1f2f6; border: 2px solid #ccc; border-radius: 8px; overflow: hidden; user-select: none; }

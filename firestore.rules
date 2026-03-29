@@ -1,10 +1,60 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Designs collection: Anyone can read, only authenticated users can write
+  
+   // Helper function to check if the current user is an admin
+    function isAdmin() {
+      return request.auth != null && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.isAdmin == true;
+    } 
+    
+    // Designs: Anyone can read, only the owner can write/edit
     match /designs/{designId} {
       allow read: if true;
+
+      // New docs must set ownerId to the current user.
+      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+
+      // Existing docs can be changed by owner. For legacy docs missing ownerId,
+      // allow a one-time claim when ownerId is set to the current user.
+      allow update, delete: if request.auth != null && (
+        request.auth.uid == resource.data.ownerId
+        || (resource.data.ownerId == null && request.resource.data.ownerId == request.auth.uid)
+      );
+    }
+
+    // Blanks: Anyone can read public blanks OR their own private blanks. Only owners can write.
+    match /blanks/{blankId} {
+      allow read: if true; 
       allow write: if request.auth != null; 
     }
+
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow update IF the user is an admin, OR if they are updating their own harmless profile data
+      allow update: if isAdmin() || (
+        request.auth != null 
+        && request.auth.uid == userId
+        // Prevent users from modifying their own roles
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['roles'])
+        // Allow modifying applicationStatus ONLY if setting it to 'pending'
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['applicationStatus'])
+          || request.resource.data.applicationStatus == 'pending'
+        )
+      );
+      
+      allow delete: if isAdmin();
+    }
+    
+    // Orders collection
+    match /orders/{orderId} {
+      // Artists can view and update their own sales
+      allow read, update: if request.auth != null && request.auth.uid == resource.data.sellerId;
+    }
+    
   }
+  
 }

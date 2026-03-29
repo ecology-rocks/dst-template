@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { collection, query, where, getDocs } from 'firebase/firestore'
-import { db } from '../firebase'
+import { db } from '@/firebase'
 
 const route = useRoute()
 const userProfile = ref(null)

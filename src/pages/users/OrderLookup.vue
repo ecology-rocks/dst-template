@@ -177,6 +177,10 @@ onMounted(() => {
             <div>
               <p class="item-title">{{ item.designTitle }}</p>
               <p class="item-meta">{{ item.blankName }} | {{ item.color }} | {{ item.size }} | Qty {{ item.quantity }}</p>
+              <p v-for="field in item.customization?.textFields || []" :key="field.label + field.text" class="item-meta customization-item-meta">
+                {{ field.label }}: {{ field.text }}
+              </p>
+              <p v-if="item.customization?.notes" class="item-meta customization-item-meta">Notes: {{ item.customization.notes }}</p>
             </div>
           </div>
         </div>
@@ -344,5 +348,8 @@ input {
   margin: 2px 0 0 0;
   color: #666;
   font-size: 0.85rem;
+}
+.customization-item-meta {
+  color: #444;
 }
 </style>

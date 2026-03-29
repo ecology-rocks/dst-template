@@ -7,7 +7,7 @@ import { db } from '../firebase' // Ensure this path matches where you put fireb
 const designs = ref([])
 const loading = ref(true)
 const currentUser = ref(null)
-const galleryFilter = ref({ breed: '', sport: '', customizable: '' })
+const galleryFilter = ref({ breed: '', sport: '', customizable: '', includeAiAssisted: true })
 
 const uniqueBreeds = computed(() => [...new Set(designs.value.flatMap(d => d.breeds || []))].sort())
 const uniqueSports = computed(() => [...new Set(designs.value.flatMap(d => d.sports || []))].sort())
@@ -19,7 +19,8 @@ const filteredGalleryDesigns = computed(() => {
     const matchCustom = galleryFilter.value.customizable === '' || 
                         (galleryFilter.value.customizable === 'yes' && d.isCustomizable) || 
                         (galleryFilter.value.customizable === 'no' && !d.isCustomizable)
-    return matchBreed && matchSport && matchCustom
+    const matchAi = galleryFilter.value.includeAiAssisted || !d.isAiAssisted
+    return matchBreed && matchSport && matchCustom && matchAi
   })
 })
 
@@ -94,6 +95,13 @@ onMounted(async () => {
             <option value="yes">Yes (Add names/colors)</option>
             <option value="no">No</option>
           </select>
+        </div>
+
+        <div class="gallery-filter-item gallery-filter-item-checkbox">
+          <label class="gallery-checkbox-label">
+            <input v-model="galleryFilter.includeAiAssisted" type="checkbox" />
+            Include AI-assisted designs
+          </label>
         </div>
       </div>
       
@@ -170,6 +178,18 @@ onMounted(async () => {
   padding: 10px;
   border: 2px solid #ccc;
   border-radius: 6px;
+}
+.gallery-filter-item-checkbox {
+  display: flex;
+  align-items: end;
+}
+.gallery-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.9rem;
+  color: #1A1A1A;
 }
 .filtered-empty-state {
   margin-top: 40px;
